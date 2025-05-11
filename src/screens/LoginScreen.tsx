@@ -25,7 +25,7 @@ const LoginScreen = () => {
   const handleLogin = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://10.0.2.2:5000/login', { // Replace with your actual backend URL
+      const response = await fetch('http://10.0.2.2:5000/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -38,6 +38,8 @@ const LoginScreen = () => {
 
       const data = await response.json();
 
+      console.log('Full API response:', data);
+
       if (!response.ok) {
         const errorMessage = data?.message || `An error occurred: ${response.status} ${response.statusText}`;
         throw new Error(errorMessage);
@@ -45,24 +47,34 @@ const LoginScreen = () => {
 
       console.log('Login successful', data);
 
+      const now = new Date().getTime();
+      const expiry = now + 24 * 60 * 60 * 1000; // Session expires in 24 hours
+
       try {
-        await AsyncStorage.setItem('userSession', JSON.stringify({
-          userId: email, // Use the entered email as userId
-          role: data.role || 'user', // Assuming the backend returns a role, default to 'user' if not
-        }));
+        await AsyncStorage.setItem(
+          'userSession',
+          JSON.stringify({
+            userId: data.userId,
+            role: data.role,
+            expiry: expiry, // Include expiry timestamp
+          })
+        );
+        console.log('Session saved to AsyncStorage (LoginScreen):', { userId: data.userId, role: data.role, expiry: expiry });
       } catch (e) {
         console.error('Failed to save user session:', e);
         Alert.alert('Error', 'Failed to save session data.');
         return;
       }
 
-      // Navigate based on the role (assuming your backend returns a role property)
+      // Navigate directly to the dashboard
       if (data.role === 'admin') {
         navigation.replace('DashboardAdmin');
+      } else if (data.role === 'user') {
+        navigation.replace('DashboardUser');
       } else {
-        navigation.replace('DashboardUser'); // Default to user dashboard
+        console.warn('Unknown role:', data.role);
+        navigation.replace('Login');
       }
-
     } catch (error) {
       console.error('Error:', error);
       Alert.alert('Login Failed', error.message || 'An error occurred during login.');
@@ -73,10 +85,13 @@ const LoginScreen = () => {
 
   const handleGuestLogin = useCallback(async () => {
     try {
-      await AsyncStorage.setItem('userSession', JSON.stringify({
-        userId: 'guest',
-        role: 'guest',
-      }));
+      await AsyncStorage.setItem(
+        'userSession',
+        JSON.stringify({
+          userId: 'guest',
+          role: 'guest',
+        })
+      );
       navigation.replace('GuestDashboard'); // Navigate to guest dashboard
     } catch (error) {
       console.error('Failed to login as guest:', error);
