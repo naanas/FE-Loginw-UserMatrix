@@ -12,6 +12,18 @@ const TransitionScreen = () => {
         const session = await AsyncStorage.getItem('userSession');
         if (session) {
           const userSession = JSON.parse(session);
+          console.log('Session from AsyncStorage (Transition):', userSession);
+
+          // Check if session has expired
+          const sessionExpiry = userSession.expiry;
+          const now = new Date().getTime();
+           if (sessionExpiry && now > sessionExpiry) {
+            console.log('Session expired, clearing AsyncStorage');
+            await AsyncStorage.removeItem('userSession');
+            navigation.replace('Login');
+            return;
+          }
+
           switch (userSession.role) {
             case 'admin':
               navigation.replace('DashboardAdmin');
