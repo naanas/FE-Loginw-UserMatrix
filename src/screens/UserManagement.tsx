@@ -8,7 +8,13 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  SafeAreaView, // Use SafeAreaView for better layout on notched devices
+  KeyboardAvoidingView, // Use KeyboardAvoidingView to handle keyboard overlap
+  Platform,
+  ActivityIndicator, // Use ActivityIndicator for loading states
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native'; // Import useNavigation for navigation
+import AsyncStorage from '@react-native-async-storage/async-storage'; // Import AsyncStorage
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
@@ -17,14 +23,22 @@ const UserManagement = () => {
   const [newRole, setNewRole] = useState('user'); // Default role
   const [selectedUser, setSelectedUser] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true); // Add loading state
+  const navigation = useNavigation(); // Initialize navigation
 
   useEffect(() => {
     fetchUsers();
   }, []);
 
   const fetchUsers = async () => {
+    setLoading(true); // Set loading to true when fetching users
     try {
-      const response = await fetch('http://10.0.2.2:5000/manage/users');
+      const token = await AsyncStorage.getItem('userToken'); // Retrieve token from AsyncStorage
+      const response = await fetch('http://10.0.2.2:5000/manage/users', {
+        headers: {
+          Authorization: `Bearer ${token}`, // Include token in headers
+        },
+      });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -33,6 +47,8 @@ const UserManagement = () => {
     } catch (error) {
       console.error('Failed to fetch users:', error);
       Alert.alert('Error', 'Failed to fetch users');
+    } finally {
+      setLoading(false); // Set loading to false when fetching is complete
     }
   };
 
@@ -43,10 +59,12 @@ const UserManagement = () => {
     }
 
     try {
+      const token = await AsyncStorage.getItem('userToken'); // Retrieve token from AsyncStorage
       const response = await fetch('http://10.0.2.2:5000/manage/users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`, // Include token in headers
         },
         body: JSON.stringify({
           userId: newUserId,
@@ -78,10 +96,12 @@ const UserManagement = () => {
     }
 
     try {
+      const token = await AsyncStorage.getItem('userToken'); // Retrieve token from AsyncStorage
       const response = await fetch(`http://10.0.2.2:5000/manage/users/${selectedUser.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`, // Include token in headers
         },
         body: JSON.stringify({
           userId: newUserId,
@@ -118,8 +138,12 @@ const UserManagement = () => {
           text: 'OK',
           onPress: async () => {
             try {
+              const token = await AsyncStorage.getItem('userToken'); // Retrieve token from AsyncStorage
               const response = await fetch(`http://10.0.2.2:5000/manage/users/${id}`, {
                 method: 'DELETE',
+                headers: {
+                  Authorization: `Bearer ${token}`, // Include token in headers
+                },
               });
 
               if (!response.ok) {
@@ -145,11 +169,12 @@ const UserManagement = () => {
       onPress={() => {
         setSelectedUser(item);
         setNewUserId(item.userId);
+        setNewPassword(item.password); // Set password to state
         setNewRole(item.role);
         setIsEditing(true);
       }}
     >
-      <Text>{item.userId} ({item.role})</Text>
+      <Text style={styles.listItemText}>{item.userId} ({item.role})</Text>
       <TouchableOpacity onPress={() => deleteUser(item.id)}>
         <Text style={styles.deleteButton}>Delete</Text>
       </TouchableOpacity>
@@ -157,93 +182,138 @@ const UserManagement = () => {
   );
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>User Management</Text>
-
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="User ID"
-          value={newUserId}
-          onChangeText={setNewUserId}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          secureTextEntry
-          value={newPassword}
-          onChangeText={setNewPassword}
-        />
-        <View style={styles.roleContainer}>
-          <Text style={styles.roleLabel}>Role:</Text>
-          <TouchableOpacity
-            style={[styles.roleButton, newRole === 'user' && styles.selectedRoleButton]}
-            onPress={() => setNewRole('user')}
-          >
-            <Text style={[styles.roleText, newRole === 'user' && styles.selectedRoleText]}>User</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.roleButton, newRole === 'admin' && styles.selectedRoleButton]}
-            onPress={() => setNewRole('admin')}
-          >
-            <Text style={[styles.roleText, newRole === 'admin' && styles.selectedRoleText]}>Admin</Text>
-          </TouchableOpacity>
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.container}
+      >
+        <View style={styles.header}>
+          <View style={styles.headerContent}>
+            <Text style={styles.headerText}>User Management</Text>
+          </View>
         </View>
-      </View>
 
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={isEditing ? updateUser : addUser}
-        >
-          <Text style={styles.buttonText}>{isEditing ? 'Update User' : 'Add User'}</Text>
-        </TouchableOpacity>
-        {isEditing && (
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="User ID"
+            value={newUserId}
+            onChangeText={setNewUserId}
+            placeholderTextColor="#888"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            secureTextEntry
+            value={newPassword}
+            onChangeText={setNewPassword}
+            placeholderTextColor="#888"
+          />
+          <View style={styles.roleContainer}>
+            <Text style={styles.roleLabel}>Role:</Text>
+            <TouchableOpacity
+              style={[styles.roleButton, newRole === 'user' && styles.selectedRoleButton]}
+              onPress={() => setNewRole('user')}
+            >
+              <Text style={[styles.roleText, newRole === 'user' && styles.selectedRoleText]}>User</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.roleButton, newRole === 'admin' && styles.selectedRoleButton]}
+              onPress={() => setNewRole('admin')}
+            >
+              <Text style={[styles.roleText, newRole === 'admin' && styles.selectedRoleText]}>Admin</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.buttonContainer}>
           <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={() => {
-              setIsEditing(false);
-              setSelectedUser(null);
-              setNewUserId('');
-              setNewPassword('');
-              setNewRole('user');
-            }}
+            style={[styles.button, styles.addButton]}
+            onPress={isEditing ? updateUser : addUser}
           >
+            <Text style={styles.buttonText}>{isEditing ? 'Add User' : 'Update User'}</Text>
+          </TouchableOpacity>
+          {isEditing && (
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => {
+                setIsEditing(false);
+                setSelectedUser(null);
+                setNewUserId('');
+                setNewPassword('');
+                setNewRole('user');
+              }}
+            >
             <Text style={styles.buttonText}>Cancel Edit</Text>
           </TouchableOpacity>
-        )}
-      </View>
+          )}
+        </View>
 
-      <FlatList
-        data={users}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id.toString()}
-        style={styles.list}
-      />
-    </View>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#005bac" />
+          </View>
+        ) : (
+          <FlatList
+            data={users}
+            renderItem={renderItem}
+            keyExtractor={(item) => item.id.toString()}
+            style={styles.list}
+          />
+        )}
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f27431', // Match the background color in the image
+  },
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: 'transparent', // Make container transparent
   },
   header: {
+    backgroundColor: 'transparent', // No header background color
+    paddingTop: 20,
+    paddingBottom: 10,
+    borderBottomWidth: 0, // Remove the border
+    shadowColor: 'transparent', // Remove the shadow
+    shadowOffset: { width: 0, height: 0 }, // Remove shadow
+    shadowOpacity: 0, // Remove shadow
+    shadowRadius: 0, // Remove shadow
+    elevation: 0, // Remove shadow (Android)
+    marginBottom: 10,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center', // Center the header text
+  },
+  headerText: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 20,
+    color: 'white', // White header text
     textAlign: 'center',
   },
   inputContainer: {
-    marginBottom: 20,
+    marginBottom: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)', // Semi-transparent white
+    padding: 15,
+    borderRadius: 10,
+    borderWidth: 1, // Add a border
+    borderColor: 'rgba(255, 255, 255, 0.5)', // Semi-transparent white border
   },
   input: {
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(255, 255, 255, 0.7)', // More transparent white
     padding: 10,
     marginBottom: 10,
     borderRadius: 5,
+    fontSize: 16,
+    color: '#333',
   },
   roleContainer: {
     flexDirection: 'row',
@@ -253,37 +323,43 @@ const styles = StyleSheet.create({
   roleLabel: {
     marginRight: 10,
     fontSize: 16,
+    color: 'white', // White role label
   },
   roleButton: {
-    backgroundColor: '#ddd',
-    padding: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)', // Semi-transparent white
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderRadius: 5,
     marginRight: 10,
   },
   selectedRoleButton: {
-    backgroundColor: '#4a86e8',
+    backgroundColor: 'rgba(0, 0, 0, 0.2)', // Darker transparent
   },
   roleText: {
     fontSize: 16,
-    color: 'black',
+    color: 'white', // White role text
   },
   selectedRoleText: {
     color: 'white',
+    fontWeight: 'bold',
   },
   buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: 'column', // Vertically Stack Buttons
     marginBottom: 20,
+    justifyContent: 'center', // Center horizontally
+  },
+  button: {
+    padding: 12,
+    borderRadius: 5,
+    marginBottom: 10, // Space Between Buttons
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   addButton: {
-    backgroundColor: '#4CAF50',
-    padding: 12,
-    borderRadius: 5,
+    backgroundColor: '#34a0a4', // Success Colour
   },
   cancelButton: {
-    backgroundColor: '#f44336',
-    padding: 12,
-    borderRadius: 5,
+    backgroundColor: '#e5383b', // Red Color for Delete/Cancel
   },
   buttonText: {
     color: 'white',
@@ -298,18 +374,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'white',
-    padding: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)', // Semi-transparent white
+    padding: 12,
     marginBottom: 10,
     borderRadius: 5,
   },
   selectedListItem: {
-    borderColor: '#4a86e8',
+    borderColor: '#fff', // White Border for Selected
     borderWidth: 2,
   },
+  listItemText: {
+    fontSize: 16,
+    color: 'white', // White list item text
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   deleteButton: {
-    color: 'red',
+    color: '#ddd', // Light Grey
     fontWeight: 'bold',
+    fontSize: 14,
   },
 });
 

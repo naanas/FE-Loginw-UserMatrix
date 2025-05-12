@@ -28,7 +28,10 @@ const LoginScreen = () => {
   const handleLogin = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/login`, {
+      const endpoint = `${API_URL}/login`;
+      console.log('Login: Hitting endpoint:', endpoint); // Log endpoint
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -46,9 +49,12 @@ const LoginScreen = () => {
       }
 
       const data = await response.json();
+      console.log('Login: Response data:', data); // Log response data
+
       const now = Date.now();
       const expiry = now + 24 * 60 * 60 * 1000; // Session expires in 24 hours
 
+      // Simpan userId di dalam userSession
       await AsyncStorage.setItem(
         'userSession',
         JSON.stringify({
@@ -57,6 +63,7 @@ const LoginScreen = () => {
           expiry: expiry,
         })
       );
+      console.log('LoginScreen: Data berhasil disimpan di AsyncStorage');
 
       // Navigasi berdasarkan peran pengguna
       switch (data.role) {

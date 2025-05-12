@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
+import { getSession, setSession as setSessionUtil, clearSession as clearSessionUtil } from './sessionUtils'; // Import fungsi utilitas
 
 const SessionContext = createContext();
 
@@ -11,9 +11,10 @@ interface SessionContextProps {
   isLoading: boolean;
   resetInactivityTimeout: () => void;
   timeout: number;
+  onSessionTimeout: () => void; // Tambahkan callback function
 }
 
-export const SessionProvider = ({ children, timeout = 30000 }) => {
+export const SessionProvider = ({ children, timeout = 30000, onSessionTimeout }) => {
   const [userSession, setUserSession] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [lastActive, setLastActive] = useState(null);
@@ -21,9 +22,9 @@ export const SessionProvider = ({ children, timeout = 30000 }) => {
   useEffect(() => {
     const loadSession = async () => {
       try {
-        const session = await AsyncStorage.getItem('userSession');
+        const session = await getSession(); // Gunakan fungsi utilitas untuk mendapatkan sesi
         if (session) {
-          setUserSession(JSON.parse(session));
+          setUserSession(session);
         }
       } catch (error) {
         console.error('Error loading session:', error);
@@ -37,7 +38,7 @@ export const SessionProvider = ({ children, timeout = 30000 }) => {
 
   const setSession = useCallback(async (session) => {
     try {
-      await AsyncStorage.setItem('userSession', JSON.stringify(session));
+      await setSessionUtil(session); // Gunakan fungsi utilitas untuk menyimpan sesi
       setUserSession(session);
       resetInactivityTimeout(); // reset timeout when setting a session
     } catch (error) {
@@ -47,7 +48,7 @@ export const SessionProvider = ({ children, timeout = 30000 }) => {
 
   const clearSession = useCallback(async () => {
     try {
-      await AsyncStorage.removeItem('userSession');
+      await clearSessionUtil(); // Gunakan fungsi utilitas untuk menghapus sesi
       setUserSession(null);
     } catch (error) {
       console.error('Error clearing session:', error);
@@ -70,6 +71,8 @@ export const SessionProvider = ({ children, timeout = 30000 }) => {
 
       if (timeDiff > timeout) {
         console.log("Session timed out due to inactivity.");
+        clearSession(); // Hapus sesi saat timeout
+        onSessionTimeout(); // Panggil callback function
       }
     };
 
@@ -79,7 +82,7 @@ export const SessionProvider = ({ children, timeout = 30000 }) => {
 
     // Clear the interval when the component unmounts or the session is cleared
     return () => clearInterval(inactivityTimeout);
-  }, [userSession, lastActive, timeout]);
+  }, [userSession, lastActive, timeout, clearSession, onSessionTimeout]); // Tambahkan onSessionTimeout sebagai dependensi
 
   //reset timer when app comes to foreground
   useEffect(() => {
@@ -98,8 +101,9 @@ export const SessionProvider = ({ children, timeout = 30000 }) => {
     clearSession,
     isLoading,
     resetInactivityTimeout,
-    timeout
-  }), [userSession, setSession, clearSession, isLoading, resetInactivityTimeout, timeout]);
+    timeout,
+    onSessionTimeout // Sertakan callback function dalam value
+  }), [userSession, setSession, clearSession, isLoading, resetInactivityTimeout, timeout, onSessionTimeout]);
 
   return (
     <SessionContext.Provider value={value}>

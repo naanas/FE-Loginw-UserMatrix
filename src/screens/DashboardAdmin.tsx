@@ -8,24 +8,28 @@ import {
   TouchableOpacity,
   SafeAreaView,
   StatusBar,
-  Alert, // Import Alert component
+  Alert,
+  ActivityIndicator, // Import ActivityIndicator
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { useNavigation } from '@react-navigation/native'; // Import hook useNavigation
-import { useSession } from './SessionContext'; // Import useSession hook
+import { useNavigation } from '@react-navigation/native';
+import { useSession } from './SessionContext';
 
 const DashboardAdmin = () => {
-  const navigation = useNavigation(); // Inisialisasi hook useNavigation
-  const { userSession, clearSession } = useSession(); // Access the user session from the context
-  const userId = userSession ? userSession.userId : 'Guest'; // Get userId from session, default to 'Guest'
+  const navigation = useNavigation();
+  const { userSession, clearSession, isLoading: sessionLoading } = useSession();
+  // Pastikan userSession dan userSession.userId tidak null
+  const userId = userSession && userSession.userId ? userSession.userId : 'Guest';
+  const [users, setUsers] = useState([]);
+  const [apiLoading, setApiLoading] = useState(true); // Add loading state
 
   const handleLogout = useCallback(async () => {
-    await clearSession(); // Clear the session
-    navigation.replace('Login'); // Navigate to Login screen
+    await clearSession();
+    navigation.replace('Login');
   }, [clearSession, navigation]);
 
   const handleProfile = () => {
-    navigation.navigate('Profile'); // Navigate ke halaman profile
+    navigation.navigate('Profile');
   };
 
   const showLogoutAlert = () => {
@@ -50,10 +54,42 @@ const DashboardAdmin = () => {
     );
   };
 
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    setApiLoading(true); // Set loading state to true
+    try {
+      const endpoint = 'http://10.0.2.2:5000/manage/users';
+      console.log('DashboardAdmin: Hitting endpoint:', endpoint); // Log endpoint
+
+      const response = await fetch(endpoint, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('DashboardAdmin: Response data:', data); // Log response data
+      setUsers(data);
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+      Alert.alert('Error', 'Failed to fetch users');
+    } finally {
+      setApiLoading(false); // Set loading state to false
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
-      
+
       <View style={styles.headerContainer}>
         <LinearGradient
           colors={['rgba(0, 131, 238, 0.9)', 'rgba(62, 167, 253, 0.6)', 'transparent']}
@@ -65,126 +101,122 @@ const DashboardAdmin = () => {
                 source={require('../assets/Profile1.png')}
                 style={styles.profileImage}
               />
-              <Text style={styles.greeting}>Hello, {userId}!</Text> {/* Display the userId */}
+              {/* Tampilkan ActivityIndicator jika sessionLoading true */}
+              {sessionLoading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.greeting}>Hello, {userId}!</Text>
+              )}
             </View>
+          </TouchableOpacity>
+          {/* Add Logout Button Here */}
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Text style={styles.logoutButtonText}>Logout</Text>
           </TouchableOpacity>
         </LinearGradient>
       </View>
 
-      
-        {/* Hero Section */}
-        <View style={styles.heroSection}>
-          <Text style={styles.heroTitle}>
-            Zonasi 5R Area Shelter Drum 
-          </Text>
-          <Text style={styles.heroTitle}>
-             DSP Plumpang
-          </Text>
-          <Image
-            source={require('../assets/headerimage.jpg')}
-            style={styles.heroImage}
-          />
-        </View>
-
-        {/* Grid Section */}
-        {/* <View style={styles.gridContainer}>
-          <View style={styles.gridRow}>
-            <GridItem
-              title="Sisi Luar Shelter"
-              description="Items Cleaning: Grill & Lantai Luar"
-              imageSource={require('../assets/SisiLuarShelter.jpg')}
-              onPress={() => navigation.navigate('SisiLuarShelter')}
-            />
-            <GridItem
-              title="Area Dalam Shelter"
-              description="Items Cleaning: Produk Level L, Pelindung H-Beam & Lantai Dalam Shelter"
-              imageSource={require('../assets/AreaDalamShelter.jpg')}
-              onPress={() => navigation.navigate('areadalamshelter')}
+      <View style={styles.content}>
+        <ScrollView contentContainerStyle={styles.scrollViewContent}>
+          {/* Hero Section */}
+          <View style={styles.heroSection}>
+            <Text style={styles.heroTitle}>
+              Zonasi 5R Area Shelter Drum
+            </Text>
+            <Text style={styles.heroTitle}>
+              DSP Plumpang
+            </Text>
+            <Image
+              source={require('../assets/headerimage.jpg')}
+              style={styles.heroImage}
             />
           </View>
 
-          <View style={styles.gridRow}>
-            <GridItem
-              title="Dinding Shelter"
-              description="Items Cleaning: Dinding Luar & Dinding Dalam"
-              imageSource={require('../assets/DindingShelter.jpg')}
-              onPress={() => navigation.navigate('dindingshelter')}
-            />
-            <GridItem
-              title="Sarfas"
-              description="Items Cleaning: Forklift & Shelter Forklift"
-              imageSource={require('../assets/Sarfas.jpg')}
-              onPress={() => navigation.navigate('sharfas')}
-            />
+          {/* Grid Section - Displaying User Data */}
+          <View style={styles.gridContainer}>
+            <Text style={styles.sectionTitle}>User Data</Text>
+
+            {apiLoading ? (
+              <ActivityIndicator size="large" color="white" />
+            ) : (
+              <View style={styles.gridRow}>
+                {users.map((user, index) => (
+                  <GridItem
+                    key={index}
+                    title={user.userId}
+                    description={`Role: ${user.role}`} // added dynamic description
+                    //imageSource={require('../assets/user_placeholder.png')} // PlaceHolder Image
+                  />
+                ))}
+              </View>
+            )}
           </View>
-        </View> */}
-        <View style={{ height: 80 }} />
-      
+          <View style={{ height: 80 }} />
+        </ScrollView>
+      </View>
 
       {/* Bottom Navigation */}
-      <BottomNav  />
+      <BottomNav />
     </SafeAreaView>
   );
 };
 
 const BottomNav = () => {
-    const navigation = useNavigation();
+  const navigation = useNavigation();
 
-    const navigateToUserManagement = useCallback(() => {
-        navigation.navigate('UserManagement');
-    }, [navigation]);
+  const navigateToUserManagement = useCallback(() => {
+    navigation.navigate('UserManagement');
+  }, [navigation]);
 
-    return (
-      <View style={styles.bottomNavContainer}>
-        <View style={styles.bottomNav}>
-          <NavItem iconSource={require('../assets/home.png')} text="Home" active={true} />
-          <NavItem iconSource={require('../assets/message.png')} text="Messages" active={false} />
-          <NavItem
-            iconSource={require('../assets/profile.png')}
-            text="User Management"
-            active={false}
-            onPress={navigateToUserManagement} // Navigate to UserManagement
-          />
-          {/* <NavItem iconSource={require('../assets/profile.png')} text="Profile" active={false} /> */}
-        </View>
-      </View>
-    );
-  };
-  
-  const NavItem = ({ iconSource, text, active, onPress }) => {
-    const buttonStyle = [
-      styles.navItem,
-      active ? styles.activeNavItem : {} // Conditional styling for active state
-    ];
-  
-    return (
-      <TouchableOpacity style={buttonStyle} onPress={onPress}>
-        <Image
-          source={iconSource}
-          style={[
-            styles.navItemIcon,
-            active ? styles.activeNavItemIcon : {} // Conditional styling for active state
-          ]}
+  return (
+    <View style={styles.bottomNavContainer}>
+      <View style={styles.bottomNav}>
+        <NavItem iconSource={require('../assets/home.png')} text="Home" active={true} />
+        {/* <NavItem iconSource={require('../assets/message.png')} text="Messages" active={false} /> */}
+        <NavItem
+          iconSource={require('../assets/profile.png')}
+          text="User Management"
+          active={false}
+          onPress={navigateToUserManagement}
         />
-        <Text style={[
-          styles.navItemText,
-          active ? styles.activeNavItemText : {} // Conditional styling for active state
-        ]}>{text}</Text>
-      </TouchableOpacity>
-    );
-  };
+      </View>
+    </View>
+  );
+};
 
-const GridItem = ({ title, description, imageSource, onPress }) => (
+const NavItem = ({ iconSource, text, active, onPress }) => {
+  const buttonStyle = [
+    styles.navItem,
+    active ? styles.activeNavItem : {}
+  ];
+
+  return (
+    <TouchableOpacity style={buttonStyle} onPress={onPress}>
+      <Image
+        source={iconSource}
+        style={[
+          styles.navItemIcon,
+          active ? styles.activeNavItemIcon : {}
+        ]}
+      />
+      <Text style={[
+        styles.navItemText,
+        active ? styles.activeNavItemText : {}
+      ]}>{text}</Text>
+    </TouchableOpacity>
+  );
+};
+
+const GridItem = ({ title, description, imageSource }) => (
   <View style={styles.gridItem}>
-    <Image
-      source={imageSource}
-      style={styles.itemImage}
-    />
+    {imageSource && (
+      <Image
+        source={imageSource}
+        style={styles.itemImage}
+      />
+    )}
     <Text style={styles.itemTitle}>{title}</Text>
     <Text style={styles.itemDescription}>{description}</Text>
-    <TouchableOpacity style={styles.addButton} onPress={onPress}>
-      <Text style={styles.addButtonText}>+</Text>
-    </TouchableOpacity>
   </View>
 );
 
@@ -207,11 +239,14 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
     overflow: 'hidden',
+    flexDirection: 'row', // Align items horizontally
+    justifyContent: 'space-between', // Distribute items
+    alignItems: 'center', // Vertically center items
   },
   content: {
     marginTop: 110, // Tinggi header
   },
-    scrollViewContent: {
+  scrollViewContent: {
     paddingBottom: 80, // Tinggi bottom navigation
   },
   time: {
@@ -237,7 +272,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   heroSection: {
-    top:110,
     padding: 20,
   },
   heroImage: {
@@ -253,18 +287,18 @@ const styles = StyleSheet.create({
     color: 'white',
   },
   gridContainer: {
-    top:100,
     flex: 1,
     padding: 10,
   },
   gridRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap', // Allow items to wrap to the next line
     justifyContent: 'space-between',
     marginBottom: 10,
   },
   gridItem: {
     width: '48%',
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)', // Semi-transparent
     borderRadius: 10,
     padding: 10,
     marginBottom: 10,
@@ -278,12 +312,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginTop: 5,
+    color: 'white',
   },
   itemDescription: {
-    fontSize: 10, // Ukuran font yang disesuaikan
-    color: 'gray',
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)', // Lighter text
     marginTop: 5,
-    marginRight: 40,
   },
   addButton: {
     position: 'absolute',
@@ -330,27 +364,38 @@ const styles = StyleSheet.create({
     color: 'black',
     fontSize: 10,
     marginTop: 5,
-    textAlign:'center'
+    textAlign: 'center'
   },
-    navItemIcon: {
-        width: 30,
-        height: 30,
-        tintColor:'black',
-    },
-
-  // Style for the active state
+  navItemIcon: {
+    width: 30,
+    height: 30,
+    tintColor: 'black',
+  },
   activeNavItem: {
-    // Example: Change background color or add a border
-    // backgroundColor: '#e0e0e0',
   },
   activeNavItemText: {
-    // Example: Change text color
     color: '#4a86e8',
     fontWeight: 'bold',
   },
-    activeNavItemIcon: {
-    // Example: Change icon color
+  activeNavItemIcon: {
     tintColor: '#4a86e8',
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  logoutButton: {
+    padding: 10,
+    backgroundColor: '#f44336',
+    borderRadius: 5,
+  },
+  logoutButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

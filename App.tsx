@@ -1,16 +1,36 @@
-// App.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import LoginScreen from './src/screens/LoginScreen';
 import DashboardAdmin from './src/screens/DashboardAdmin';
 import DashboardUser from './src/screens/DashboardUser';
 import UserManagement from './src/screens/UserManagement';
 import { AppState } from 'react-native';
 import { SessionProvider } from './src/screens/SessionContext';
+import { getSession, clearSession, checkSessionExpiry } from './src/screens/sessionUtils';
+import { useNavigation } from '@react-navigation/native'; // Import useNavigation
 
 const Stack = createNativeStackNavigator();
+
+const Navigator = () => {
+  const navigation = useNavigation();
+
+  const handleSessionTimeout = useCallback(() => {
+    // Arahkan pengguna ke layar login
+    navigation.replace('Login');
+  }, [navigation]);
+
+  return (
+    <SessionProvider onSessionTimeout={handleSessionTimeout}>
+      <Stack.Navigator initialRouteName="Login">
+        <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="DashboardAdmin" component={DashboardAdmin} options={{ headerShown: false }} />
+        <Stack.Screen name="DashboardUser" component={DashboardUser} options={{ headerShown: false }} />
+        <Stack.Screen name="UserManagement" component={UserManagement} options={{ headerShown: false }} />
+      </Stack.Navigator>
+    </SessionProvider>
+  );
+};
 
 const App = () => {
   const [initialRouteName, setInitialRouteName] = useState('Login');
@@ -18,24 +38,21 @@ const App = () => {
   useEffect(() => {
     const checkUserSession = async () => {
       try {
-        const userSession = await AsyncStorage.getItem('userSession');
+        const userSession = await getSession();
         if (userSession) {
-          const session = JSON.parse(userSession);
-          console.log('Session from AsyncStorage (App.tsx):', session);
+          console.log('Session from AsyncStorage (App.tsx):', userSession);
 
-          // Check if session has expired (e.g., 24 hours)
-          const sessionExpiry = session.expiry;
-          const now = new Date().getTime();
-          if (sessionExpiry && now > sessionExpiry) {
+          // Check if session has expired
+          if (checkSessionExpiry(userSession)) {
             console.log('Session expired, clearing AsyncStorage');
-            await AsyncStorage.removeItem('userSession');
+            await clearSession();
             setInitialRouteName('Login');
             return;
           }
 
-          if (session.role === 'admin') {
+          if (userSession.role === 'admin') {
             setInitialRouteName('DashboardAdmin');
-          } else if (session.role === 'user') {
+          } else if (userSession.role === 'user') {
             setInitialRouteName('DashboardUser');
           } else {
             setInitialRouteName('Login');
@@ -69,16 +86,9 @@ const App = () => {
   }, []);
 
   return (
-    <SessionProvider>
-      <NavigationContainer>
-        <Stack.Navigator initialRouteName={initialRouteName}>
-          <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="DashboardAdmin" component={DashboardAdmin} options={{ headerShown: false }} />
-          <Stack.Screen name="DashboardUser" component={DashboardUser} options={{ headerShown: false }} />
-          <Stack.Screen name="UserManagement" component={UserManagement} options={{ headerShown: false }} />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </SessionProvider>
+    <NavigationContainer>
+      <Navigator />
+    </NavigationContainer>
   );
 };
 
