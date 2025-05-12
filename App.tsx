@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import LoginScreen from './src/screens/LoginScreen';
 import DashboardAdmin from './src/screens/DashboardAdmin';
 import DashboardUser from './src/screens/DashboardUser';
-//import TransitionScreen from './src/screens/TransitionScreen'; // Remove TransitionScreen
+import UserManagement from './src/screens/UserManagement';
 import { AppState } from 'react-native';
 import { SessionProvider } from './src/screens/SessionContext';
 
@@ -75,6 +75,7 @@ const App = () => {
           <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
           <Stack.Screen name="DashboardAdmin" component={DashboardAdmin} options={{ headerShown: false }} />
           <Stack.Screen name="DashboardUser" component={DashboardUser} options={{ headerShown: false }} />
+          <Stack.Screen name="UserManagement" component={UserManagement} options={{ headerShown: false }} />
         </Stack.Navigator>
       </NavigationContainer>
     </SessionProvider>

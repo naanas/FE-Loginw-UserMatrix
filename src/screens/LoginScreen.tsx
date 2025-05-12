@@ -16,6 +16,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 
+// Definisikan URL API di luar komponen untuk kemudahan konfigurasi
+const API_URL = 'http://10.0.2.2:5000';
+
 const LoginScreen = () => {
   const navigation = useNavigation();
   const [email, setEmail] = useState('');
@@ -25,7 +28,7 @@ const LoginScreen = () => {
   const handleLogin = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://10.0.2.2:5000/login', {
+      const response = await fetch(`${API_URL}/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -36,47 +39,39 @@ const LoginScreen = () => {
         }),
       });
 
-      const data = await response.json();
-
-      console.log('Full API response:', data);
-
       if (!response.ok) {
-        const errorMessage = data?.message || `An error occurred: ${response.status} ${response.statusText}`;
+        const data = await response.json();
+        const errorMessage = data?.message || `Login failed: ${response.status} ${response.statusText}`;
         throw new Error(errorMessage);
       }
 
-      console.log('Login successful', data);
-
-      const now = new Date().getTime();
+      const data = await response.json();
+      const now = Date.now();
       const expiry = now + 24 * 60 * 60 * 1000; // Session expires in 24 hours
 
-      try {
-        await AsyncStorage.setItem(
-          'userSession',
-          JSON.stringify({
-            userId: data.userId,
-            role: data.role,
-            expiry: expiry, // Include expiry timestamp
-          })
-        );
-        console.log('Session saved to AsyncStorage (LoginScreen):', { userId: data.userId, role: data.role, expiry: expiry });
-      } catch (e) {
-        console.error('Failed to save user session:', e);
-        Alert.alert('Error', 'Failed to save session data.');
-        return;
-      }
+      await AsyncStorage.setItem(
+        'userSession',
+        JSON.stringify({
+          userId: data.userId,
+          role: data.role,
+          expiry: expiry,
+        })
+      );
 
-      // Navigate directly to the dashboard
-      if (data.role === 'admin') {
-        navigation.replace('DashboardAdmin');
-      } else if (data.role === 'user') {
-        navigation.replace('DashboardUser');
-      } else {
-        console.warn('Unknown role:', data.role);
-        navigation.replace('Login');
+      // Navigasi berdasarkan peran pengguna
+      switch (data.role) {
+        case 'admin':
+          navigation.replace('DashboardAdmin');
+          break;
+        case 'user':
+          navigation.replace('DashboardUser');
+          break;
+        default:
+          console.warn('Unknown role:', data.role);
+          navigation.replace('Login');
       }
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Login error:', error);
       Alert.alert('Login Failed', error.message || 'An error occurred during login.');
     } finally {
       setLoading(false);
@@ -94,7 +89,7 @@ const LoginScreen = () => {
       );
       navigation.replace('GuestDashboard'); // Navigate to guest dashboard
     } catch (error) {
-      console.error('Failed to login as guest:', error);
+      console.error('Guest login error:', error);
       Alert.alert('Error', 'Failed to login as guest.');
     }
   }, [navigation]);
@@ -182,14 +177,14 @@ const LoginScreen = () => {
       </TouchableOpacity>
 
       {/* Links untuk Forgot Password dan Register */}
-      <View style={styles.linkContainer}>
+      {/* <View style={styles.linkContainer}>
         <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
           <Text style={styles.linkText}>Forgot Password?</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => navigation.navigate('Register')}>
           <Text style={styles.linkText}>Register</Text>
         </TouchableOpacity>
-      </View>
+      </View> */}
 
       {/* Logo Pertamina bawah */}
       <Image
