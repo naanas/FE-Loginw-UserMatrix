@@ -19,6 +19,8 @@ const { width, height } = Dimensions.get('window');
 // Definisikan URL API di luar komponen untuk kemudahan konfigurasi
 const API_URL = 'http://10.0.2.2:5000';
 
+const SESSION_DURATION = 60;
+
 const LoginScreen = () => {
   const navigation = useNavigation();
   const [email, setEmail] = useState('');
@@ -52,7 +54,7 @@ const LoginScreen = () => {
       console.log('Login: Response data:', data); // Log response data
 
       const now = Date.now();
-      const expiry = now + 24 * 60 * 60 * 1000; // Session expires in 24 hours
+      const expiry = now + SESSION_DURATION * 1000; // Session expires in 24 hours
 
       // Simpan userId di dalam userSession
       await AsyncStorage.setItem(
