@@ -68,10 +68,10 @@ const LoginScreen = () => {
       // Navigasi berdasarkan peran pengguna
       switch (data.role) {
         case 'admin':
-          navigation.replace('DashboardAdmin');
+          navigation.replace('TransitionScreen');
           break;
         case 'user':
-          navigation.replace('DashboardUser');
+          navigation.replace('TransitionScreen');
           break;
         default:
           console.warn('Unknown role:', data.role);

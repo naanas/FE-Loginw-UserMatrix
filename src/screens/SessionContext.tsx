@@ -1,115 +1,136 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { AppState } from 'react-native';
-import { getSession, setSession as setSessionUtil, clearSession as clearSessionUtil } from './sessionUtils'; // Import fungsi utilitas
+import { getSession, setSession as setSessionUtil, clearSession as clearSessionUtil } from './sessionUtils';
+import { useNavigation } from '@react-navigation/native';
 
 const SessionContext = createContext();
 
 interface SessionContextProps {
-  userSession: any;
-  setSession: (session: any) => Promise<void>;
-  clearSession: () => Promise<void>;
-  isLoading: boolean;
-  resetInactivityTimeout: () => void;
-  timeout: number;
-  onSessionTimeout: () => void; // Tambahkan callback function
+    userSession: any;
+    setSession: (session: any) => Promise<void>;
+    clearSession: () => Promise<void>;
+    isLoading: boolean;
+    resetInactivityTimeout: () => void;
+    timeout: number;
+    onSessionTimeout: () => void;
 }
 
 export const SessionProvider = ({ children, timeout = 30000, onSessionTimeout }) => {
-  const [userSession, setUserSession] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [lastActive, setLastActive] = useState(null);
+    const [userSession, setUserSession] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [lastActive, setLastActive] = useState(null);
+    const navigation = useNavigation();  //Move inside SessionProvider
 
-  useEffect(() => {
-    const loadSession = async () => {
-      try {
-        const session = await getSession(); // Gunakan fungsi utilitas untuk mendapatkan sesi
-        if (session) {
-          setUserSession(session);
+
+    useEffect(() => {
+        let inactivityTimeout;
+
+        const checkInactivity = () => {
+            if (!userSession) {
+                console.log("No user session, skipping inactivity check");
+                return;
+            }
+            if (!lastActive) {
+                console.log("Last active not set, skipping inactivity check");
+                return;
+            }
+
+            const now = new Date();
+            const timeDiff = now.getTime() - lastActive.getTime();
+
+            if (timeDiff > timeout) {
+                console.log("Session timed out due to inactivity.");
+                clearSession();
+                onSessionTimeout();
+            }
+        };
+
+        if (userSession && lastActive) {
+            console.log("Setting interval for inactivity check");
+            inactivityTimeout = setInterval(checkInactivity, 1000);
         }
-      } catch (error) {
-        console.error('Error loading session:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
 
-    loadSession();
-  }, []);
+        // Clear the interval when the component unmounts or the session is cleared
+        return () => {
+            console.log("Clearing interval for inactivity check");
+            clearInterval(inactivityTimeout);
+        };
+    }, [userSession, lastActive, timeout, clearSession, onSessionTimeout]);
 
-  const setSession = useCallback(async (session) => {
-    try {
-      await setSessionUtil(session); // Gunakan fungsi utilitas untuk menyimpan sesi
-      setUserSession(session);
-      resetInactivityTimeout(); // reset timeout when setting a session
-    } catch (error) {
-      console.error('Error setting session:', error);
-    }
-  }, []);
+    //reset timer when app comes to foreground
+    useEffect(() => {
+        const loadSession = async () => {
+            try {
+                const session = await getSession();
+                console.log("SessionContext - Retrieved session data:", session);
+                if (session) {
+                    setUserSession(session);
+                    console.log("SessionContext - Session data set to state:", session);
+                }
+            } catch (error) {
+                console.error('SessionContext - Error loading session:', error);
+            } finally {
+                setIsLoading(false);
+                console.log("SessionContext - setIsLoading(false) called");
+            }
+        };
+        const subscription = AppState.addEventListener('focus', () => {
+            resetInactivityTimeout();
+            console.log("App came to foreground, resetting inactivity timeout");
+        });
 
-  const clearSession = useCallback(async () => {
-    try {
-      await clearSessionUtil(); // Gunakan fungsi utilitas untuk menghapus sesi
-      setUserSession(null);
-    } catch (error) {
-      console.error('Error clearing session:', error);
-    }
-  }, []);
+        loadSession()
 
-  const resetInactivityTimeout = useCallback(() => {
-    setLastActive(new Date());
-  }, []);
+        return () => {
+            subscription.remove();
+            console.log("Removing AppState listener");
+        };
+    }, []);
 
-  useEffect(() => {
-    let inactivityTimeout;
+    const setSession = useCallback(async (session) => {
+        try {
+            await setSessionUtil(session);
+            setUserSession(session);
+            resetInactivityTimeout();
+        } catch (error) {
+            console.error('SessionContext - Error setting session:', error);
+        }
+    }, []);
 
-    const checkInactivity = () => {
-      if (!userSession) return; // dont clear when there is no user
-      if (!lastActive) return; // dont clear if you have not reset timeout
+    const clearSession = useCallback(async () => {
+        try {
+            await clearSessionUtil();
+            setUserSession(null);
+        } catch (error) {
+            console.error('Error clearing session:', error);
+        }
+    }, []);
 
-      const now = new Date();
-      const timeDiff = now.getTime() - lastActive.getTime();
+    const resetInactivityTimeout = useCallback(() => {
+        setLastActive(new Date());
+    }, []);
 
-      if (timeDiff > timeout) {
-        console.log("Session timed out due to inactivity.");
-        clearSession(); // Hapus sesi saat timeout
-        onSessionTimeout(); // Panggil callback function
-      }
-    };
+    const value = React.useMemo(() => ({
+        userSession,
+        setSession,
+        clearSession,
+        isLoading,
+        resetInactivityTimeout,
+        timeout,
+        onSessionTimeout
+    }), [userSession, setSession, clearSession, isLoading, resetInactivityTimeout, timeout, onSessionTimeout]);
 
-    if (userSession && lastActive) {
-      inactivityTimeout = setInterval(checkInactivity, 1000); // Check every 1 second
-    }
-
-    // Clear the interval when the component unmounts or the session is cleared
-    return () => clearInterval(inactivityTimeout);
-  }, [userSession, lastActive, timeout, clearSession, onSessionTimeout]); // Tambahkan onSessionTimeout sebagai dependensi
-
-  //reset timer when app comes to foreground
-  useEffect(() => {
-    const subscription = AppState.addEventListener('focus', () => {
-      resetInactivityTimeout();
-    });
-
-    return () => {
-      subscription.remove();
-    };
-  }, []);
-
-  const value = React.useMemo<SessionContextProps>(() => ({
-    userSession,
-    setSession,
-    clearSession,
-    isLoading,
-    resetInactivityTimeout,
-    timeout,
-    onSessionTimeout // Sertakan callback function dalam value
-  }), [userSession, setSession, clearSession, isLoading, resetInactivityTimeout, timeout, onSessionTimeout]);
-
-  return (
-    <SessionContext.Provider value={value}>
-      {children}
-    </SessionContext.Provider>
-  );
+    return (
+        <SessionContext.Provider value={value}>
+            {children}
+        </SessionContext.Provider>
+    );
 };
 
-export const useSession = () => useContext(SessionContext) as SessionContextProps;
+export const useSession = () => {
+  const context = useContext(SessionContext);
+  if (!context) {
+    throw new Error("useSession must be used within a SessionProvider");
+  }
+  return context;
+};

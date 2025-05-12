@@ -22,6 +22,7 @@ const DashboardAdmin = () => {
   const userId = userSession && userSession.userId ? userSession.userId : 'Guest';
   const [users, setUsers] = useState([]);
   const [apiLoading, setApiLoading] = useState(true); // Add loading state
+  
 
   const handleLogout = useCallback(async () => {
     await clearSession();
@@ -72,7 +73,8 @@ const DashboardAdmin = () => {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
@@ -85,7 +87,7 @@ const DashboardAdmin = () => {
       setApiLoading(false); // Set loading state to false
     }
   };
-
+  
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
@@ -126,7 +128,7 @@ const DashboardAdmin = () => {
             <Text style={styles.heroTitle}>
               DSP Plumpang
             </Text>
-            <Image
+             <Image
               source={require('../assets/headerimage.jpg')}
               style={styles.heroImage}
             />
@@ -397,6 +399,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+    animation: {
+        width: 200, // Sesuaikan ukuran gambar
+        height: 200,
+    },
 });
 
 export default DashboardAdmin;

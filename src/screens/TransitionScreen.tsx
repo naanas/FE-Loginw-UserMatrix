@@ -1,25 +1,31 @@
-import React, { useEffect } from 'react';
-import { View, Text, ActivityIndicator } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, StyleSheet, Animated, Image, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { clearSession, getSession, checkSessionExpiry } from './sessionUtils'; // Import fungsi utilitas
 
 const TransitionScreen = () => {
   const navigation = useNavigation();
+  const opacityValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const checkSession = async () => {
+    // Mulai animasi perubahan opacity
+    Animated.timing(opacityValue, {
+      toValue: 1,
+      duration: 2000, // Durasi animasi (dalam milidetik)
+      useNativeDriver: true,
+    }).start(async () => {
+      // Setelah animasi selesai, periksa sesi dan navigasi
       try {
-        const session = await AsyncStorage.getItem('userSession');
-        if (session) {
-          const userSession = JSON.parse(session);
-          console.log('Session from AsyncStorage (Transition):', userSession);
+        const userSession = await getSession();
+
+        if (userSession) {
+          console.log('TransitionScreen: Session from AsyncStorage:', userSession);
 
           // Check if session has expired
-          const sessionExpiry = userSession.expiry;
-          const now = new Date().getTime();
-           if (sessionExpiry && now > sessionExpiry) {
-            console.log('Session expired, clearing AsyncStorage');
-            await AsyncStorage.removeItem('userSession');
+          if (checkSessionExpiry(userSession)) {
+            console.log('TransitionScreen: Session expired, clearing AsyncStorage');
+            await clearSession();
             navigation.replace('Login');
             return;
           }
@@ -38,20 +44,39 @@ const TransitionScreen = () => {
           navigation.replace('Login');
         }
       } catch (error) {
-        console.error('Error:', error);
+        console.error('TransitionScreen: Error loading session:', error);
+        Alert.alert('Error', 'Failed to load session. Please try again.');
         navigation.replace('Login');
       }
-    };
+    });
 
-    checkSession();
+    return () => {
+      // Tidak ada yang perlu dibersihkan
+    };
   }, [navigation]);
 
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <ActivityIndicator size="large" color="#005bac" />
-      <Text>Loading...</Text>
+    <View style={styles.container}>
+      <Animated.Image
+        source={require('../assets/PertaminaLogo.png')} // Ganti dengan path gambar Anda
+        style={[styles.logo, { opacity: opacityValue }]}
+        resizeMode="contain"
+      />
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  logo: {
+    width: 200, // Ukuran logo diperbesar
+    height: 200,
+  },
+});
 
 export default TransitionScreen;
