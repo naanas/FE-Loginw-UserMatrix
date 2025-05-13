@@ -73,10 +73,10 @@ const LoginScreen = () => {
 
             switch (data.user.role) {
                 case 'admin':
-                    navigation.replace('AdminDashboard');
+                    navigation.replace('TransitionScreen');
                     break;
                 case 'user':
-                    navigation.replace('PicDashboard');
+                    navigation.replace('TransitionScreen');
                     break;
                 default:
                     console.warn('Unknown role:', data.user.role);
@@ -107,11 +107,11 @@ const LoginScreen = () => {
             {/* Input Email */}
             <View style={styles.inputContainer}>
                 <TextInput
-                    placeholder="User ID" // Changed from Email to User ID
+                    placeholder="User ID" 
                     placeholderTextColor="#888"
                     style={styles.input}
-                    value={userId} // Changed from email to userId
-                    onChangeText={setUserId} // Changed from setEmail to setUserId
+                    value={userId} 
+                    onChangeText={setUserId} 
                     editable={!loading}
                 />
             </View>
@@ -191,13 +191,14 @@ const styles = StyleSheet.create({
         fontSize: width * 0.05,
         fontWeight: 'bold',
         color: '#000',
-        marginTop: height * 0.01,
+        marginTop: height * -0.04,
         textAlign: 'center',
     },
     subtitle: {
         fontSize: width * 0.04,
         color: '#333',
-        marginBottom: height * 0.03,
+        marginTop: height * -0.04,
+        marginBottom: height * -0.03,
         textAlign: 'center',
     },
     inputContainer: {
@@ -209,10 +210,11 @@ const styles = StyleSheet.create({
         height: height * 0.07,
         borderColor: '#ddd',
         borderWidth: 1,
-        borderRadius: 10,
+        borderRadius: 20,
         paddingHorizontal: width * 0.04,
         backgroundColor: '#FFFFFF',
         fontSize: width * 0.04,
+        marginBottom: height * -0.05,
     },
     button: {
         borderRadius: 10,

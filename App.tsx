@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import LoginScreen from './src/screens/LoginScreen.tsx';
-import AdminDashboard from './src/screens/AdminDashboard.tsx'; // Corrected path
-import PicDashboard from './src/screens/PicDashboard.tsx'; // Corrected path
+import AdminDashboard from './src/screens/AdminDashboard.tsx';
+import PicDashboard from './src/screens/PicDashboard.tsx';
+import TransitionScreen from './src/screens/TransitionScreen'; // Import TransitionScreen
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -50,6 +51,7 @@ const App = () => {
                 <NavigationContainer>
                     <Stack.Navigator initialRouteName={initialRouteName}>
                         <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+                        <Stack.Screen name="TransitionScreen" component={TransitionScreen} options={{ headerShown: false }} />{/* Added TransitionScreen */}
                         <Stack.Screen name="AdminDashboard" component={AdminDashboard} options={{ headerShown: false }} />
                         <Stack.Screen name="PicDashboard" component={PicDashboard} options={{ headerShown: false }} />
                     </Stack.Navigator>
