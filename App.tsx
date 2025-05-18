@@ -8,6 +8,13 @@ import TransitionScreen from './src/screens/TransitionScreen'; // Import Transit
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import SisiLuarShelter from './src/screens/MenuScreens/SisiLuarShelter.tsx';
+import Grill from './src/screens/subscreens/SisiLuarShelter/Grill.tsx';
+import LantaiLuar from './src/screens/subscreens/SisiLuarShelter/LantaiLuar.tsx';
+import AreaDalamShelter from './src/screens/MenuScreens/AreaDalamShelter.tsx';
+import ProdukLv1 from './src/screens/subscreens/AreaDalamShelter/Produklv1.tsx';
+import PerlindunganH_beam from './src/screens/subscreens/AreaDalamShelter/PerlindunganH_beam.tsx';
+import LantaiDalamShelter from './src/screens/subscreens/AreaDalamShelter/LantaiDalamShelter.tsx';
 
 const Stack = createStackNavigator();
 
@@ -54,6 +61,13 @@ const App = () => {
                         <Stack.Screen name="TransitionScreen" component={TransitionScreen} options={{ headerShown: false }} />{/* Added TransitionScreen */}
                         <Stack.Screen name="AdminDashboard" component={AdminDashboard} options={{ headerShown: false }} />
                         <Stack.Screen name="PicDashboard" component={PicDashboard} options={{ headerShown: false }} />
+                        <Stack.Screen name="SisiLuarShelter" component={SisiLuarShelter} options={{ headerShown: false }} />
+                        <Stack.Screen name="Grill" component={Grill} options={{ headerShown: false }} />
+                        <Stack.Screen name="LantaiLuar" component={LantaiLuar} options={{ headerShown: false }} />
+                        <Stack.Screen name="AreaDalamShelter" component={AreaDalamShelter} options={{ headerShown: false }} />
+                        <Stack.Screen name="ProdukLv1" component={ProdukLv1} options={{ headerShown: false }} />
+                        <Stack.Screen name="PerlindunganH_beam" component={PerlindunganH_beam} options={{ headerShown: false }} />
+                        <Stack.Screen name="LantaiDalamShelter" component={LantaiDalamShelter} options={{ headerShown: false }} />
                     </Stack.Navigator>
                 </NavigationContainer>
             </SafeAreaProvider>

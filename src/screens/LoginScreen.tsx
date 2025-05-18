@@ -9,6 +9,8 @@ import {
     Dimensions,
     Alert,
     ActivityIndicator,
+    KeyboardAvoidingView,
+    Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
@@ -16,7 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 
-const API_URL = 'http://10.0.2.2:5000/api/users';
+const API_URL = 'https://ptm-tracker-service.onrender.com/api/v1/auth';
 
 const SESSION_DURATION = 60;
 
@@ -41,7 +43,7 @@ const LoginScreen = () => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    userId: userId, 
+                    userCode: userId,
                     password: password,
                 }),
             });
@@ -62,28 +64,28 @@ const LoginScreen = () => {
             const data = await response.json();
             console.log('Login: Response data:', data);
 
-            await AsyncStorage.setItem('userToken', data.token);
-            await AsyncStorage.setItem(
-                'userSession',
-                JSON.stringify({
-                    userId: data.user.userId,
-                    role: data.user.role,
-                })
-            );
+            if (data.status === "success") {
+                // Store the entire data object in AsyncStorage
+                await AsyncStorage.setItem('userSession', JSON.stringify(data.data));
+                await AsyncStorage.setItem('userToken', data.data.token);
 
-            switch (data.user.role) {
-                case 'admin':
-                    navigation.replace('TransitionScreen');
-                    break;
-                case 'user':
-                    navigation.replace('TransitionScreen');
-                    break;
-                default:
-                    console.warn('Unknown role:', data.user.role);
-                    navigation.replace('Login');
+                switch (data.data.user.role) {
+                    case 'admin':
+                        navigation.replace('TransitionScreen');
+                        break;
+                    case 'pic':
+                        navigation.replace('TransitionScreen');
+                        break;
+                    default:
+                        console.warn('Unknown role:', data.data.user.role);
+                        navigation.replace('Login');
+                }
+            } else {
+                setErrorMessage(data.message || 'Login failed.');
             }
         } catch (error) {
             console.error('Login error:', error);
+            setErrorMessage(error.message || 'Login failed.');
         } finally {
             setLoading(false);
         }
@@ -92,84 +94,89 @@ const LoginScreen = () => {
     const accessibilityHidden = typeof loading === 'boolean' ? loading : false;
 
     return (
-        <View style={styles.container}>
-            {/* Logo and UI elements */}
-            <Image
-                source={require('../assets/LogoLogin.png')}
-                style={styles.logo}
-                resizeMode="contain"
-            />
-
-            {/* Judul */}
-            <Text style={styles.title}>5R-TRACKER</Text>
-            <Text style={styles.subtitle}>DSP Plumpang</Text>
-
-            {/* Input Email */}
-            <View style={styles.inputContainer}>
-                <TextInput
-                    placeholder="User ID" 
-                    placeholderTextColor="#888"
-                    style={styles.input}
-                    value={userId} 
-                    onChangeText={setUserId} 
-                    editable={!loading}
+        <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+            <View style={styles.container}>
+                {/* Logo and UI elements */}
+                <Image
+                    source={require('../assets/LogoLogin.png')}
+                    style={styles.logo}
+                    resizeMode="contain"
                 />
-            </View>
 
-            {/* Input Password */}
-            <View style={styles.inputContainer}>
-                <TextInput
-                    placeholder="Password"
-                    placeholderTextColor="#888"
-                    secureTextEntry
-                    style={styles.input}
-                    value={password}
-                    onChangeText={setPassword}
-                    editable={!loading}
-                />
-            </View>
+                {/* Judul */}
+                <Text style={styles.title}>5R-TRACKER</Text>
+                <Text style={styles.subtitle}>DSP Plumpang</Text>
 
-            {/* Display Error Message */}
-            {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+                {/* Input Email */}
+                <View style={styles.inputContainer}>
+                    <TextInput
+                        placeholder="User ID"
+                        placeholderTextColor="#888"
+                        style={styles.input}
+                        value={userId}
+                        onChangeText={setUserId}
+                        editable={!loading}
+                    />
+                </View>
 
-            {/* Tombol Login */}
-            <TouchableOpacity
-                style={styles.button}
-                onPress={handleLogin}
-                disabled={loading}
-                accessibilityElementsHidden={accessibilityHidden}
-            >
-                <LinearGradient
-                    colors={['#4c669f', '#3b5998', '#192f6a']}
-                    style={styles.gradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
+                {/* Input Password */}
+                <View style={styles.inputContainer}>
+                    <TextInput
+                        placeholder="Password"
+                        placeholderTextColor="#888"
+                        secureTextEntry
+                        style={styles.input}
+                        value={password}
+                        onChangeText={setPassword}
+                        editable={!loading}
+                    />
+                </View>
+
+                {/* Display Error Message */}
+                {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+
+                {/* Tombol Login */}
+                <TouchableOpacity
+                    style={styles.button}
+                    onPress={handleLogin}
+                    disabled={loading}
+                    accessibilityElementsHidden={accessibilityHidden}
                 >
-                    {loading ? (
-                        <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                        <Text style={styles.buttonText}>LOGIN</Text>
-                    )}
-                </LinearGradient>
-            </TouchableOpacity>
-
-            {/* Links untuk Forgot Password dan Register */}
-            {/* <View style={styles.linkContainer}>
-                <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
-                    <Text style={styles.linkText}>Forgot Password?</Text>
+                    <LinearGradient
+                        colors={['#4c669f', '#3b5998', '#192f6a']}
+                        style={styles.gradient}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                    >
+                        {loading ? (
+                            <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                            <Text style={styles.buttonText}>LOGIN</Text>
+                        )}
+                    </LinearGradient>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-                    <Text style={styles.linkText}>Register</Text>
-                </TouchableOpacity>
-            </View> */}
 
-            {/* Logo Pertamina bawah */}
-            <Image
-                source={require('../assets/PertaminaLogo.png')}
-                style={styles.bottomLogo}
-                resizeMode="contain"
-            />
-        </View>
+                {/* Links untuk Forgot Password dan Register */}
+                {/* <View style={styles.linkContainer}>
+                    <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
+                        <Text style={styles.linkText}>Forgot Password?</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+                        <Text style={styles.linkText}>Register</Text>
+                    </TouchableOpacity>
+                </View> */}
+
+                {/* Logo Pertamina bawah */}
+                <Image
+                    source={require('../assets/PertaminaLogo.png')}
+                    style={styles.bottomLogo}
+                    resizeMode="contain"
+                />
+            </View>
+        </KeyboardAvoidingView>
     );
 };
 

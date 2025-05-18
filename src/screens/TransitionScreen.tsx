@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, Image, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage'; // Import AsyncStorage
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const TransitionScreen = () => {
     const navigation = useNavigation();
@@ -9,13 +9,11 @@ const TransitionScreen = () => {
 
     useEffect(() => {
         const startAnimationAndNavigate = async () => {
-            // Mulai animasi perubahan opacity
             Animated.timing(opacityValue, {
                 toValue: 1,
-                duration: 3000, // Durasi animasi (dalam milidetik)
+                duration: 3000,
                 useNativeDriver: true,
             }).start(async () => {
-                // Setelah animasi selesai, periksa sesi dan navigasi
                 try {
                     const userSessionString = await AsyncStorage.getItem('userSession');
                     const userSession = userSessionString ? JSON.parse(userSessionString) : null;
@@ -23,15 +21,23 @@ const TransitionScreen = () => {
                     if (userSession) {
                         console.log('TransitionScreen: Session from AsyncStorage:', userSession);
 
-                        switch (userSession.role) {
-                            case 'admin':
-                                navigation.replace('AdminDashboard');
-                                break;
-                            case 'user':
-                                navigation.replace('PicDashboard');
-                                break;
-                            default:
-                                navigation.replace('Login');
+                        // Access the role property safely
+                        const role = userSession?.user?.role;
+
+                        if (role) {
+                            switch (role) {
+                                case 'admin':
+                                    navigation.replace('AdminDashboard');
+                                    break;
+                                case 'pic':
+                                    navigation.replace('PicDashboard');
+                                    break;
+                                default:
+                                    navigation.replace('Login');
+                            }
+                        } else {
+                            console.warn('TransitionScreen: userSession.role is undefined');
+                            navigation.replace('Login');
                         }
                     } else {
                         navigation.replace('Login');
@@ -47,14 +53,14 @@ const TransitionScreen = () => {
         startAnimationAndNavigate();
 
         return () => {
-            // Tidak ada yang perlu dibersihkan
+            // No cleanup needed
         };
     }, [navigation, opacityValue]);
 
     return (
         <View style={styles.container}>
             <Animated.Image
-                source={require('../assets/PertaminaLogo.png')} // Ganti dengan path gambar Anda
+                source={require('../assets/PertaminaLogo.png')}
                 style={[styles.logo, { opacity: opacityValue }]}
                 resizeMode="contain"
             />
@@ -70,7 +76,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
     },
     logo: {
-        width: 150, // Ukuran logo diperbesar
+        width: 150,
         height: 150,
     },
 });
