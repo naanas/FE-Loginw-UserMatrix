@@ -7,7 +7,6 @@ import {
     Image,
     StyleSheet,
     Dimensions,
-    Alert,
     ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
@@ -19,8 +18,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const { width, height } = Dimensions.get('window');
 
 const API_URL = 'https://ptm-tracker-service.onrender.com/api/v1/auth';
+// const API_URL = 'http://10.22.10.202:3000/api/v1/auth';
 
-const SESSION_DURATION = 60;
 
 const LoginScreen = () => {
     const navigation = useNavigation();
@@ -65,7 +64,6 @@ const LoginScreen = () => {
             console.log('Login: Response data:', data);
 
             if (data.status === "success") {
-                // Store the entire data object in AsyncStorage
                 await AsyncStorage.setItem('userSession', JSON.stringify(data.data));
                 await AsyncStorage.setItem('userToken', data.data.token);
 
@@ -95,50 +93,53 @@ const LoginScreen = () => {
 
     return (
         <KeyboardAvoidingView
-            style={{ flex: 1 }}
+            style={styles.keyboardAvoidingView}
             behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
             <View style={styles.container}>
-                {/* Logo and UI elements */}
+                {/* Logo */}
                 <Image
                     source={require('../assets/LogoLogin.png')}
                     style={styles.logo}
                     resizeMode="contain"
                 />
 
-                {/* Judul */}
-                <Text style={styles.title}>5R-TRACKER</Text>
-                <Text style={styles.subtitle}>DSP Plumpang</Text>
-
-                {/* Input Email */}
-                <View style={styles.inputContainer}>
-                    <TextInput
-                        placeholder="User ID"
-                        placeholderTextColor="#888"
-                        style={styles.input}
-                        value={userId}
-                        onChangeText={setUserId}
-                        editable={!loading}
-                    />
+                {/* Title and Subtitle */}
+                <View style={styles.titleContainer}>
+                    <Text style={styles.title}>5R-TRACKER</Text>
+                    <Text style={styles.subtitle}>DSP Plumpang</Text>
                 </View>
 
-                {/* Input Password */}
-                <View style={styles.inputContainer}>
-                    <TextInput
-                        placeholder="Password"
-                        placeholderTextColor="#888"
-                        secureTextEntry
-                        style={styles.input}
-                        value={password}
-                        onChangeText={setPassword}
-                        editable={!loading}
-                    />
+                {/* Input Fields */}
+                <View style={styles.inputWrapper}>
+                    <View style={styles.inputContainer}>
+                        <TextInput
+                            placeholder="User ID"
+                            placeholderTextColor="#888"
+                            style={styles.input}
+                            value={userId}
+                            onChangeText={setUserId}
+                            editable={!loading}
+                        />
+                    </View>
+
+                    <View style={styles.inputContainer}>
+                        <TextInput
+                            placeholder="Password"
+                            placeholderTextColor="#888"
+                            secureTextEntry
+                            style={styles.input}
+                            value={password}
+                            onChangeText={setPassword}
+                            editable={!loading}
+                        />
+                    </View>
                 </View>
 
-                {/* Display Error Message */}
+                {/* Error Message */}
                 {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
-                {/* Tombol Login */}
+                {/* Login Button */}
                 <TouchableOpacity
                     style={styles.button}
                     onPress={handleLogin}
@@ -159,17 +160,7 @@ const LoginScreen = () => {
                     </LinearGradient>
                 </TouchableOpacity>
 
-                {/* Links untuk Forgot Password dan Register */}
-                {/* <View style={styles.linkContainer}>
-                    <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
-                        <Text style={styles.linkText}>Forgot Password?</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-                        <Text style={styles.linkText}>Register</Text>
-                    </TouchableOpacity>
-                </View> */}
-
-                {/* Logo Pertamina bawah */}
+                {/* Bottom Logo */}
                 <Image
                     source={require('../assets/PertaminaLogo.png')}
                     style={styles.bottomLogo}
@@ -181,36 +172,43 @@ const LoginScreen = () => {
 };
 
 const styles = StyleSheet.create({
+    keyboardAvoidingView: {
+        flex: 1,
+    },
     container: {
         flex: 1,
         backgroundColor: '#F2F2F2',
         alignItems: 'center',
-        justifyContent: 'space-around',
+        justifyContent: 'flex-start', // Changed to flex-start
         paddingHorizontal: width * 0.05,
-        marginTop: height * 0.1,
+        paddingTop: height * 0.1, // Added paddingTop
     },
     logo: {
-        width: width * 0.5,
-        height: width * 0.5,
-        marginBottom: height * 0.01,
+        width: width * 0.7,
+        height: width * 0.55, // Adjusted height
+        marginBottom: height * 0.02,
+    },
+    titleContainer: {
+        alignItems: 'center',
+        marginBottom: height * 0.03, // Added spacing
     },
     title: {
-        fontSize: width * 0.05,
+        fontSize: width * 0.06,
         fontWeight: 'bold',
         color: '#000',
-        marginTop: height * -0.04,
         textAlign: 'center',
     },
     subtitle: {
-        fontSize: width * 0.04,
+        fontSize: width * 0.045,
         color: '#333',
-        marginTop: height * -0.04,
-        marginBottom: height * -0.03,
         textAlign: 'center',
+    },
+    inputWrapper: {
+        width: '100%',
     },
     inputContainer: {
         width: '100%',
-        marginBottom: height * 0.01,
+        marginBottom: height * 0.02, // Consistent spacing
     },
     input: {
         width: '100%',
@@ -221,14 +219,12 @@ const styles = StyleSheet.create({
         paddingHorizontal: width * 0.04,
         backgroundColor: '#FFFFFF',
         fontSize: width * 0.04,
-        marginBottom: height * -0.05,
     },
     button: {
         borderRadius: 10,
         width: '100%',
         height: height * 0.07,
-        marginTop: height * 0.01,
-        marginBottom: height * 0.02,
+        marginTop: height * 0.02,
         overflow: 'hidden',
         shadowColor: '#000',
         shadowOffset: {
@@ -251,24 +247,15 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         fontSize: width * 0.05,
     },
-    linkContainer: {
-        width: '100%',
-        alignItems: 'center',
-        marginVertical: height * 0.01,
-    },
-    linkText: {
-        color: '#005bac',
-        fontSize: width * 0.035,
-        marginVertical: height * 0.005,
-    },
     bottomLogo: {
         width: width * 0.25,
         height: height * 0.05,
+        marginTop: height * 0.18, // Added marginTop
         marginBottom: height * 0.02,
     },
     errorText: {
         color: 'red',
-        marginBottom: 10,
+        marginBottom: height * 0.02,
         textAlign: 'center',
     },
 });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     View,
     Text,
@@ -11,22 +11,23 @@ import {
     Modal,
     StatusBar,
     Platform,
-    RefreshControl
+    RefreshControl,
+    Animated,
+    TouchableWithoutFeedback
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
-import LinearGradient from 'react-native-linear-gradient';
-import { BlurView } from "@react-native-community/blur";
+
+// Import Komponen ButtonNavigation
+import ButtonNavigation from '../screens/component/BottomNavigationBar';
+import Header from '../screens/component/Header'; // Import Header component
+import Sidebar from '../screens/component/Sidebar'; // Import Sidebar component
+import { moderateScale, verticalScale } from '../screens/component/ResponsiveSize'; // Adjust path if needed
 
 const { width, height } = Dimensions.get('window');
 
-// Responsive Design Helpers
-const guidelineBaseWidth = 375;
-const guidelineBaseHeight = 812;
-
-const scale = size => width / guidelineBaseWidth * size;
-const verticalScale = size => height / guidelineBaseHeight * size;
-const moderateScale = (size, factor = 0.5) => size + (scale(size) - size) * factor;
+// Import Local Image
+const menuIcon = require('../assets/menu.png');
 
 const PicDashboard = () => {
     const navigation = useNavigation();
@@ -34,6 +35,10 @@ const PicDashboard = () => {
     const [modalVisible, setModalVisible] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [accessMenu, setAccessMenu] = useState([]);
+    const [selectedTab, setSelectedTab] = useState('Home'); // Track the selected tab
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const sidebarAnimation = useRef(new Animated.Value(0)).current;  // Initialize with useRef
+    
 
     const hardcodedGridItems = [
         {
@@ -75,10 +80,10 @@ const PicDashboard = () => {
                 setUser(userSession.user);
                 // Extract accessMenu
                 //if (userSession.user && userSession.user.accessMenu) {
-                 //   setAccessMenu(userSession.user.accessMenu); // Set the entire accessMenu
+                //    setAccessMenu(userSession.user.accessMenu); // Set the entire accessMenu
                 //}
                 if (userSession.user && userSession.user.accessCode) {
-                  setAccessMenu(hardcodedGridItems); // Load the hardcoded menu
+                    setAccessMenu(hardcodedGridItems); // Load the hardcoded menu
                 }
             } else {
                 console.log("No user session found, navigating to Login");
@@ -127,28 +132,59 @@ const PicDashboard = () => {
         )
     };
 
+    const navigateToTab = (tabName) => {
+        setSelectedTab(tabName);
+        // You can add navigation logic here if needed
+        console.log(`Navigating to: ${tabName}`);
+    };
+
+    const closeSidebar = () => {
+        Animated.timing(sidebarAnimation, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+        }).start(() => {
+            setIsSidebarOpen(false);
+        });
+    };
+
+    const toggleSidebar = () => {
+        const toValue = isSidebarOpen ? 0 : 1;
+
+        Animated.timing(sidebarAnimation, {
+            toValue: toValue,
+            duration: 300,
+            useNativeDriver: true,
+        }).start(() => {
+            setIsSidebarOpen(!isSidebarOpen);
+        });
+    };
+
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: '#e4572e' }]}>
             <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
 
-            <View style={styles.headerContainer}>
-                <LinearGradient
-                    colors={['rgba(0, 131, 238, 0.9)', 'rgba(62, 167, 253, 0.6)', 'transparent']}
-                    style={styles.header}
-                >
-                    <View style={styles.profileContainer}>
-                        <Image
-                            source={require('../assets/Profile1.png')}
-                            style={styles.profileImage}
-                        />
-                        <Text style={styles.greeting}>Hello, {user ? user.name : 'Guest'}!</Text>
-                        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-                            <Text style={styles.logoutButtonText}>Logout</Text>
-                        </TouchableOpacity>
-                    </View>
-                </LinearGradient>
-            </View>
+            {/* Header */}
+            <Header
+                toggleSidebar={toggleSidebar}
+                menuIcon={menuIcon}
+                iconColor="white" // Add this line
+            />
 
+            {/* Sidebar */}
+            <Sidebar
+                sidebarAnimation={sidebarAnimation}
+                handleLogout={handleLogout}
+            />
+
+            {/* Overlay */}
+            {isSidebarOpen && (
+                <TouchableWithoutFeedback onPress={closeSidebar}>
+                    <View style={styles.overlay} />
+                </TouchableWithoutFeedback>
+            )}
+
+            {/* Hero Section */}
             <View style={styles.heroSection}>
                 <Text style={styles.heroTitle}>
                     Zonasi 5R Area Shelter Drum
@@ -162,6 +198,7 @@ const PicDashboard = () => {
                 />
             </View>
 
+            {/* Grid Items */}
             <FlatList
                 data={accessMenu}
                 renderItem={renderGridItem}
@@ -173,8 +210,6 @@ const PicDashboard = () => {
                 }
             />
 
-            <View style={{ height: verticalScale(80) }} />
-
             {/* Modal Detail Data dengan BlurView */}
             <Modal
                 animationType="slide"
@@ -183,11 +218,7 @@ const PicDashboard = () => {
                 onRequestClose={() => setModalVisible(false)}
             >
                 <View style={styles.modalOverlay}>
-                    <BlurView
-                        style={styles.blurView}
-                        blurType="dark"
-                        blurAmount={10}
-                    />
+
                     <View style={styles.modalContainer}>
                         <Text style={styles.modalTitle}>Detail Data</Text>
                         <TouchableOpacity
@@ -199,6 +230,12 @@ const PicDashboard = () => {
                     </View>
                 </View>
             </Modal>
+
+            {/* Bottom Navigation Bar */}
+            <ButtonNavigation
+                selectedTab={selectedTab}
+                navigateToTab={navigateToTab}
+            />
         </SafeAreaView>
     );
 };
@@ -206,53 +243,10 @@ const PicDashboard = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-    },
-    headerContainer: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 10,
-    },
-    header: {
-        padding: 20,
-        paddingTop: 30,
-        backgroundColor: 'transparent',
-        borderBottomLeftRadius: 20,
-        borderBottomRightRadius: 20,
-        overflow: 'hidden',
-    },
-    profileContainer: {
-        marginTop: verticalScale(10),
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    profileImage: {
-        width: moderateScale(40),
-        height: moderateScale(40),
-        borderRadius: moderateScale(20),
-        marginRight: moderateScale(10),
-    },
-    greeting: {
-        color: 'white',
-        fontSize: moderateScale(16),
-        fontWeight: '600',
-        flex: 1,
-    },
-    logoutButton: {
-        backgroundColor: 'rgba(255, 255, 255, 0.3)',
-        paddingVertical: verticalScale(5),
-        paddingHorizontal: moderateScale(10),
-        borderRadius: moderateScale(15),
-    },
-    logoutButtonText: {
-        color: 'white',
-        fontSize: moderateScale(14),
-        fontWeight: 'bold',
+        position: 'relative', // Ensure the container is positioned relative
     },
     heroSection: {
-        marginTop: '70',
+        marginTop: '5',
         padding: moderateScale(20),
         alignItems: 'center',
     },
@@ -345,12 +339,48 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         fontSize: moderateScale(16),
     },
-    blurView: {
+    bottomNavigationBar: {
+        backgroundColor: 'transparent',
+        height: verticalScale(70),
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        borderTopWidth: 0,
+    },
+    navBarContent: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        alignItems: 'center',
+        height: '100%',
+    },
+    navItem: {
+        flex: 1,
+        display: 'flex',
+        height: '100%',
+        paddingTop: verticalScale(10),
+        flexDirection: 'column',
+        justifyContent: 'flex-start',
+        alignItems: 'center',
+    },
+    navIcon: {
+        width: moderateScale(25),
+        height: moderateScale(25),
+        marginBottom: verticalScale(2),
+        resizeMode: 'contain',
+    },
+    navLabel: {
+        fontSize: moderateScale(12),
+        fontWeight: '500',
+    },
+    overlay: {
         position: 'absolute',
         top: 0,
         left: 0,
-        bottom: 0,
         right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.5)', // Semi-transparent background
+        zIndex: 10, // Below the sidebar but above other content
     },
 });
 
