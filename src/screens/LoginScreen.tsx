@@ -22,7 +22,7 @@ const SESSION_DURATION = 60;
 
 const LoginScreen = () => {
     const navigation = useNavigation();
-    const [userId, setUserId] = useState(''); // Changed from email to userId
+    const [userId, setUserId] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
@@ -41,7 +41,7 @@ const LoginScreen = () => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    userId: userId, // Changed from email to userId
+                    userId: userId, 
                     password: password,
                 }),
             });
@@ -87,7 +87,7 @@ const LoginScreen = () => {
         } finally {
             setLoading(false);
         }
-    }, [userId, password, navigation]); // Changed email to userId
+    }, [userId, password, navigation]);
 
     const accessibilityHidden = typeof loading === 'boolean' ? loading : false;
 
