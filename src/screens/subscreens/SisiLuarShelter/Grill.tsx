@@ -123,12 +123,23 @@ const styles = StyleSheet.create({
     },
     submitButton: {
         backgroundColor: '#ddd',
-        width: '100%',
+        width: '48%', // Adjusted width
+        borderRadius: moderateScale(5),
+        padding: moderateScale(12),
+        alignItems: 'center',
+    },
+    saveButton: { // Style for the Save button
+        backgroundColor: '#ddd',
+        width: '48%', // Adjusted width
         borderRadius: moderateScale(5),
         padding: moderateScale(12),
         alignItems: 'center',
     },
     submitButtonText: {
+        fontSize: moderateScale(16),
+        color: '#555',
+    },
+    saveButtonText: {
         fontSize: moderateScale(16),
         color: '#555',
     },
@@ -139,6 +150,11 @@ const styles = StyleSheet.create({
     buttonContainer: {
         width: '100%',
         marginTop: verticalScale(10),
+        flexDirection: 'row', // Added to arrange buttons horizontally
+        justifyContent: 'space-between', // Added to space buttons evenly
+    },
+     disabledPlusButton: {
+        backgroundColor: '#eee', // or any other style to indicate it's disabled
     },
     heroSection: {
         color: '#555',
@@ -174,6 +190,9 @@ const GrillScreen = () => {
     const [userToken, setUserToken] = useState(null);
     const [spotId, setSpotId] = useState(null); // State untuk menyimpan Spot ID
     const [submitButtonDisabled, setSubmitButtonDisabled] = useState(true);
+    const [afterButtonDisabled, setAfterButtonDisabled] = useState(true);
+    const expiryTime = 30; // Default expiry time in minutes (30 seconds)
+    const [beforePhotoTaken, setBeforePhotoTaken] = useState(false);
 
     const requestCameraPermission = async () => {
         try {
@@ -201,7 +220,17 @@ const GrillScreen = () => {
         navigation.goBack();
     };
 
+    const generateRandomFileName = (type, fileExtension = 'jpg') => {
+        const randomString = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        return `${type}_${randomString}.${fileExtension}`;
+    };
+
     const takePhoto = async (type) => {
+         if (type === 'before' && beforePhotoTaken) {
+            Alert.alert('Info', 'Cannot retake Photo Before after taking it.');
+            return;
+        }
+
         const options = {
             mediaType: 'photo',
             includeBase64: false,
@@ -221,6 +250,9 @@ const GrillScreen = () => {
                 let imageUri = response.assets && response.assets[0]?.uri;
                 if (imageUri) {
                     try {
+                        const fileExtension = response.assets[0].type ? response.assets[0].type.split('/')[1] : 'jpg'; // Extract extension from MIME type
+                        const randomFileName = generateRandomFileName(type, fileExtension);
+
                         const resizedImage = await ImageResizer.createResizedImage(
                             imageUri,
                             800,
@@ -232,13 +264,14 @@ const GrillScreen = () => {
                         if (type === 'before') {
                             setPhotoBefore({
                                 uri: resizedImage.uri,
-                                name: response.assets[0].fileName || 'photoBefore.jpg',
+                                name: randomFileName,
                                 type: response.assets[0].type || 'image/jpeg',
                             });
+                            setBeforePhotoTaken(true);
                         } else {
                             setPhotoAfter({
                                 uri: resizedImage.uri,
-                                name: response.assets[0].fileName || 'photoAfter.jpg',
+                                name: randomFileName,
                                 type: response.assets[0].type || 'image/jpeg',
                             });
                         }
@@ -246,16 +279,21 @@ const GrillScreen = () => {
                     } catch (resizeError) {
                         console.log('Image Resizer Error: ', resizeError);
                         Alert.alert('Error', 'Failed to resize image. Using original.');
+
+                        const fileExtension = response.assets[0].type ? response.assets[0].type.split('/')[1] : 'jpg'; // Extract extension from MIME type
+                        const randomFileName = generateRandomFileName(type, fileExtension);
+
                         if (type === 'before') {
                             setPhotoBefore({
                                 uri: imageUri,
-                                name: response.assets[0].fileName || 'photoBefore.jpg',
+                                name: randomFileName,
                                 type: response.assets[0].type || 'image/jpeg',
                             });
+                            setBeforePhotoTaken(true);
                         } else {
                             setPhotoAfter({
                                 uri: imageUri,
-                                name: response.assets[0].fileName || 'photoAfter.jpg',
+                                name: randomFileName,
                                 type: response.assets[0].type || 'image/jpeg',
                             });
                         }
@@ -265,6 +303,26 @@ const GrillScreen = () => {
         } catch (error) {
             console.error('Error launching camera: ', error);
             Alert.alert('Error', 'Failed to launch camera. Please try again.');
+        }
+    };
+
+    const handleSave = async () => {
+
+        try {
+            const now = new Date();
+            const expiryDate = new Date(now.getTime() + expiryTime * 60000); // Add expiryTime in minutes to current time
+
+            const saveData = {
+                photoBefore: photoBefore,
+                photoAfter: photoAfter,
+                description: description,
+                expiryDate: expiryDate.toISOString(),
+            };
+            await AsyncStorage.setItem('grillScreenData', JSON.stringify(saveData));
+            Alert.alert('Saved', 'Data saved successfully!');
+        } catch (error) {
+            console.error('Error saving data:', error);
+            Alert.alert('Error', 'Failed to save data.');
         }
     };
 
@@ -362,6 +420,7 @@ const GrillScreen = () => {
                 setPhotoBefore(null);
                 setPhotoAfter(null);
                 setDescription('');
+                 setBeforePhotoTaken(false); // Allow retaking photo before
             } else {
                 console.error('Gagal mengirim data:', responseData);
                 Alert.alert('Error', 'Gagal mengirim data. Silakan coba lagi.');
@@ -381,6 +440,32 @@ const GrillScreen = () => {
                 setUserToken(token);
             } catch (error) {
                 console.error('Error loading user token:', error);
+            }
+        };
+
+         const loadSavedData = async () => {
+            try {
+                const savedData = await AsyncStorage.getItem('grillScreenData');
+                if (savedData) {
+                    const parsedData = JSON.parse(savedData);
+
+                    if (parsedData.expiryDate) {
+                        const expiryDate = new Date(parsedData.expiryDate);
+                        if (expiryDate > new Date()) {
+                            setPhotoBefore(parsedData.photoBefore);
+                            setPhotoAfter(parsedData.photoAfter);
+                            setDescription(parsedData.description);
+                        } else {
+                            await AsyncStorage.removeItem('grillScreenData');
+                            Alert.alert('Info', 'Saved data has expired and was removed.');
+                        }
+                    } else {
+                        await AsyncStorage.removeItem('grillScreenData');
+                        Alert.alert('Info', 'Saved data has no expiry date and was removed.');
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading saved data:', error);
             }
         };
 
@@ -407,9 +492,11 @@ const GrillScreen = () => {
 
         loadUserToken();
         loadSpotId();
+        loadSavedData();
     }, []);
 
     useEffect(() => {
+        setAfterButtonDisabled(!photoBefore);
         setSubmitButtonDisabled(!photoBefore || !photoAfter || !description);
     }, [photoBefore, photoAfter, description]);
 
@@ -437,6 +524,7 @@ const GrillScreen = () => {
                                 <TouchableOpacity
                                     style={[styles.plusButton, styles.borderedPlusButton]}
                                     onPress={() => takePhoto('before')}
+                                    disabled={beforePhotoTaken}
                                 >
                                     {photoBefore ? (
                                         <Image source={{ uri: photoBefore.uri }} style={styles.image} />
@@ -448,8 +536,13 @@ const GrillScreen = () => {
                             <View style={styles.photoContainer}>
                                 <Text style={styles.cardLabel}>Photo After</Text>
                                 <TouchableOpacity
-                                    style={[styles.plusButton, styles.borderedPlusButton]}
+                                    style={[
+                                        styles.plusButton,
+                                        styles.borderedPlusButton,
+                                        afterButtonDisabled && styles.disabledPlusButton, // Apply disabled style
+                                    ]}
                                     onPress={() => takePhoto('after')}
+                                    disabled={afterButtonDisabled}
                                 >
                                     {photoAfter ? (
                                         <Image source={{ uri: photoAfter.uri }} style={styles.image} />
@@ -469,6 +562,12 @@ const GrillScreen = () => {
                     />
 
                     <View style={styles.buttonContainer}>
+                         <TouchableOpacity
+                            style={[styles.saveButton]}
+                            onPress={handleSave}
+                        >
+                            <Text style={styles.saveButtonText}>Save</Text>
+                        </TouchableOpacity>
                         <TouchableOpacity
                             style={[styles.submitButton, submitButtonDisabled && styles.disabledButton]}
                             onPress={handleSubmit}
@@ -476,6 +575,7 @@ const GrillScreen = () => {
                         >
                             <Text style={styles.submitButtonText}>Submit</Text>
                         </TouchableOpacity>
+
                         {isLoading && <ActivityIndicator size="small" color="#0000ff" />}
                     </View>
                 </View>
