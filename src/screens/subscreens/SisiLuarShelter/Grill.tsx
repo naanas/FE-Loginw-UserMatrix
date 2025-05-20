@@ -18,6 +18,8 @@ import { useNavigation } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
 import { launchCamera } from 'react-native-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import ImageResizer from 'react-native-image-resizer'; // Import ImageResizer
+
 
 const { width, height } = Dimensions.get('window');
 
