@@ -17,8 +17,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 
-const API_URL = 'https://ptm-tracker-service.onrender.com/api/v1/auth';
-// const API_URL = 'http://10.22.10.202:3000/api/v1/auth';
+// const API_URL = 'https://ptm-tracker-service.onrender.com/api/v1/auth';
+const API_URL = 'http://10.22.10.202:3000/api/v1/auth';
 
 
 const LoginScreen = () => {
