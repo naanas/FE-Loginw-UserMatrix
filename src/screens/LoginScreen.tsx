@@ -376,6 +376,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: width * 0.04,
         backgroundColor: '#FFFFFF',
         fontSize: width * 0.04,
+        color: '#000',
     },
     button: {
         borderRadius: 10,
