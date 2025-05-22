@@ -191,14 +191,14 @@ const CreateReportScreen = () => {
     const token = useUserStore((state) => state.token);
 
     const navigation = useNavigation();
-    const [photosBefore, setPhotosBefore] = useState([]);
-    const [photosAfter, setPhotosAfter] = useState([]);
+    const [photosBefore, setPhotosBefore] = useState([null, null, null]);
+    const [photosAfter, setPhotosAfter] = useState([null, null, null]);
     const [description, setDescription] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [submitButtonDisabled, setSubmitButtonDisabled] = useState(true);
     const [afterButtonDisabled, setAfterButtonDisabled] = useState(true);
     const expiryTime = 30; // Default expiry time in minutes (30 seconds)
-    const [beforePhotosTaken, setBeforePhotosTaken] = useState(false);
+    const [beforePhotosTaken, setBeforePhotosTaken] = useState([false, false, false]);
 
     const requestCameraPermission = async () => {
         try {
@@ -231,97 +231,97 @@ const CreateReportScreen = () => {
         return `${type}_${randomString}.${fileExtension}`;
     };
 
-   const takePhoto = async (type, index) => {
-       if (type === 'before' && beforePhotosTaken[index]) {
-           Alert.alert('Info', `Cannot retake Photo Before #${index + 1} after taking it.`);
-           return;
-       }
-   
-       const options = {
-           mediaType: 'photo',
-           includeBase64: false,
-           maxHeight: 200,
-           maxWidth: 200,
-       };
-   
-       try {
-           const response = await launchCamera(options);
-   
-           if (response.didCancel) {
-               console.log('User cancelled image picker');
-           } else if (response.error) {
-               console.log('ImagePicker Error: ', response.error);
-               Alert.alert('Error', 'Failed to capture image. Please try again.');
-           } else {
-               let imageUri = response.assets && response.assets[0]?.uri;
-               if (imageUri) {
-                   try {
-                       const fileExtension = response.assets[0].type ? response.assets[0].type.split('/')[1] : 'jpg'; // Extract extension from MIME type
-                       const randomFileName = generateRandomFileName(type, fileExtension);
-   
-                       const resizedImage = await ImageResizer.createResizedImage(
-                           imageUri,
-                           800,
-                           600,
-                           'JPEG',
-                           80,
-                           0,
-                       );
-   
-                       const newPhoto = {
-                           uri: resizedImage.uri,
-                           name: randomFileName,
-                           type: response.assets[0].type || 'image/jpeg',
-                       };
-   
-                       if (type === 'before') {
-                           const updatedPhotosBefore = [...photosBefore];
-                           updatedPhotosBefore[index] = newPhoto;
-                           setPhotosBefore(updatedPhotosBefore);
-   
-                           const updatedBeforePhotosTaken = [...beforePhotosTaken];
-                           updatedBeforePhotosTaken[index] = true;
-                           setBeforePhotosTaken(updatedBeforePhotosTaken);
-                       } else {
-                           const updatedPhotosAfter = [...photosAfter];
-                           updatedPhotosAfter[index] = newPhoto;
-                           setPhotosAfter(updatedPhotosAfter);
-                       }
-   
-                   } catch (resizeError) {
-                       console.log('Image Resizer Error: ', resizeError);
-                       Alert.alert('Error', 'Failed to resize image. Using original.');
-   
-                       const fileExtension = response.assets[0].type ? response.assets[0].type.split('/')[1] : 'jpg'; // Extract extension from MIME type
-                       const randomFileName = generateRandomFileName(type, fileExtension);
-   
-                       const newPhoto = {
-                           uri: imageUri,
-                           name: randomFileName,
-                           type: response.assets[0].type || 'image/jpeg',
-                       };
-   
-                       if (type === 'before') {
-                           const updatedPhotosBefore = [...photosBefore];
-                           updatedPhotosBefore[index] = newPhoto;
-                           setPhotosBefore(updatedPhotosBefore);
-   
-                           const updatedBeforePhotosTaken = [...beforePhotosTaken];
-                           updatedBeforePhotosTaken[index] = true;
-                           setBeforePhotosTaken(updatedBeforePhotosTaken);
-                       } else {
-                           const updatedPhotosAfter = [...photosAfter];
-                           updatedPhotosAfter[index] = newPhoto;
-                           setPhotosAfter(updatedPhotosAfter);
-                       }
-                   }
-               }
-           }
-       } catch (error) {
-           console.error('Error launching camera: ', error);
-           Alert.alert('Error', 'Failed to launch camera. Please try again.');
-       }
-   };
+     const takePhoto = async (type, index) => {
+     if (type === 'before' && beforePhotosTaken[index]) {
+         Alert.alert('Info', `Cannot retake Photo Before #${index + 1} after taking it.`);
+         return;
+     }
+ 
+     const options = {
+         mediaType: 'photo',
+         includeBase64: false,
+         maxHeight: 200,
+         maxWidth: 200,
+     };
+ 
+     try {
+         const response = await launchCamera(options);
+ 
+         if (response.didCancel) {
+             console.log('User cancelled image picker');
+         } else if (response.error) {
+             console.log('ImagePicker Error: ', response.error);
+             Alert.alert('Error', 'Failed to capture image. Please try again.');
+         } else {
+             let imageUri = response.assets && response.assets[0]?.uri;
+             if (imageUri) {
+                 try {
+                     const fileExtension = response.assets[0].type ? response.assets[0].type.split('/')[1] : 'jpg'; // Extract extension from MIME type
+                     const randomFileName = generateRandomFileName(type, fileExtension);
+ 
+                     const resizedImage = await ImageResizer.createResizedImage(
+                         imageUri,
+                         800,
+                         600,
+                         'JPEG',
+                         80,
+                         0,
+                     );
+ 
+                     const newPhoto = {
+                         uri: resizedImage.uri,
+                         name: randomFileName,
+                         type: response.assets[0].type || 'image/jpeg',
+                     };
+ 
+                     if (type === 'before') {
+                         const updatedPhotosBefore = [...photosBefore];
+                         updatedPhotosBefore[index] = newPhoto;
+                         setPhotosBefore(updatedPhotosBefore);
+ 
+                         const updatedBeforePhotosTaken = [...beforePhotosTaken];
+                         updatedBeforePhotosTaken[index] = true;
+                         setBeforePhotosTaken(updatedBeforePhotosTaken);
+                     } else {
+                         const updatedPhotosAfter = [...photosAfter];
+                         updatedPhotosAfter[index] = newPhoto;
+                         setPhotosAfter(updatedPhotosAfter);
+                     }
+ 
+                 } catch (resizeError) {
+                     console.log('Image Resizer Error: ', resizeError);
+                     Alert.alert('Error', 'Failed to resize image. Using original.');
+ 
+                     const fileExtension = response.assets[0].type ? response.assets[0].type.split('/')[1] : 'jpg'; // Extract extension from MIME type
+                     const randomFileName = generateRandomFileName(type, fileExtension);
+ 
+                     const newPhoto = {
+                         uri: imageUri,
+                         name: randomFileName,
+                         type: response.assets[0].type || 'image/jpeg',
+                     };
+ 
+                     if (type === 'before') {
+                         const updatedPhotosBefore = [...photosBefore];
+                         updatedPhotosBefore[index] = newPhoto;
+                         setPhotosBefore(updatedPhotosBefore);
+ 
+                         const updatedBeforePhotosTaken = [...beforePhotosTaken];
+                         updatedBeforePhotosTaken[index] = true;
+                         setBeforePhotosTaken(updatedBeforePhotosTaken);
+                     } else {
+                         const updatedPhotosAfter = [...photosAfter];
+                         updatedPhotosAfter[index] = newPhoto;
+                         setPhotosAfter(updatedPhotosAfter);
+                     }
+                 }
+             }
+         }
+     } catch (error) {
+         console.error('Error launching camera: ', error);
+         Alert.alert('Error', 'Failed to launch camera. Please try again.');
+     }
+ };
 
     const handleSave = async () => {
 
@@ -355,7 +355,7 @@ const CreateReportScreen = () => {
 
             photosBefore.forEach((photo, index) => {
                 if (photo) {
-                    formData.append(`photosBefore`, {  // Appending each "before" photo
+                    formData.append(`photoBefore`, {  // Appending each "before" photo
                         uri: Platform.OS === "android" ? photo.uri : photo.uri.replace("file://", ""),
                         type: photo.type,
                         name: photo.name,
@@ -365,13 +365,15 @@ const CreateReportScreen = () => {
 
             photosAfter.forEach((photo, index) => {
                 if (photo) {
-                    formData.append(`photosAfter`, {  // Appending each "after" photo
+                    formData.append(`photoAfter`, {  // Appending each "after" photo
                         uri: Platform.OS === "android" ? photo.uri : photo.uri.replace("file://", ""),
                         type: photo.type,
                         name: photo.name,
                     });
                 }
             });
+
+            console.log(formData);
 
             const response = await fetch('https://ptm-tracker-service.onrender.com/api/v1/report/create', {
                 method: 'POST',
