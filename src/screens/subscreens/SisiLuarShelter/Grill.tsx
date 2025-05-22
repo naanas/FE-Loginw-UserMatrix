@@ -179,12 +179,17 @@ const styles = StyleSheet.create({
     disabledButton: {
         backgroundColor: '#888',
     },
+    photoButtonWrapper: { // Style for spacing
+        marginBottom: verticalScale(10),
+    }
 });
 
 const GrillScreen = () => {
     const navigation = useNavigation();
-    const [photoBefore, setPhotoBefore] = useState(null);
-    const [photoAfter, setPhotoAfter] = useState(null);
+
+    // States to hold multiple photos
+    const [photosBefore, setPhotosBefore] = useState([null, null, null]);
+    const [photosAfter, setPhotosAfter] = useState([null, null, null]);
     const [description, setDescription] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [userToken, setUserToken] = useState(null);
@@ -192,7 +197,7 @@ const GrillScreen = () => {
     const [submitButtonDisabled, setSubmitButtonDisabled] = useState(true);
     const [afterButtonDisabled, setAfterButtonDisabled] = useState(true);
     const expiryTime = 30; // Default expiry time in minutes (30 seconds)
-    const [beforePhotoTaken, setBeforePhotoTaken] = useState(false);
+     const [beforePhotosTaken, setBeforePhotosTaken] = useState([false, false, false]);
 
     const requestCameraPermission = async () => {
         try {
@@ -225,86 +230,98 @@ const GrillScreen = () => {
         return `${type}_${randomString}.${fileExtension}`;
     };
 
-    const takePhoto = async (type) => {
-         if (type === 'before' && beforePhotoTaken) {
-            Alert.alert('Info', 'Cannot retake Photo Before after taking it.');
-            return;
-        }
+    const takePhoto = async (type, index) => {
+    if (type === 'before' && beforePhotosTaken[index]) {
+        Alert.alert('Info', `Cannot retake Photo Before #${index + 1} after taking it.`);
+        return;
+    }
 
-        const options = {
-            mediaType: 'photo',
-            includeBase64: false,
-            maxHeight: 200,
-            maxWidth: 200,
-        };
+    const options = {
+        mediaType: 'photo',
+        includeBase64: false,
+        maxHeight: 200,
+        maxWidth: 200,
+    };
 
-        try {
-            const response = await launchCamera(options);
+    try {
+        const response = await launchCamera(options);
 
-            if (response.didCancel) {
-                console.log('User cancelled image picker');
-            } else if (response.error) {
-                console.log('ImagePicker Error: ', response.error);
-                Alert.alert('Error', 'Failed to capture image. Please try again.');
-            } else {
-                let imageUri = response.assets && response.assets[0]?.uri;
-                if (imageUri) {
-                    try {
-                        const fileExtension = response.assets[0].type ? response.assets[0].type.split('/')[1] : 'jpg'; // Extract extension from MIME type
-                        const randomFileName = generateRandomFileName(type, fileExtension);
+        if (response.didCancel) {
+            console.log('User cancelled image picker');
+        } else if (response.error) {
+            console.log('ImagePicker Error: ', response.error);
+            Alert.alert('Error', 'Failed to capture image. Please try again.');
+        } else {
+            let imageUri = response.assets && response.assets[0]?.uri;
+            if (imageUri) {
+                try {
+                    const fileExtension = response.assets[0].type ? response.assets[0].type.split('/')[1] : 'jpg'; // Extract extension from MIME type
+                    const randomFileName = generateRandomFileName(type, fileExtension);
 
-                        const resizedImage = await ImageResizer.createResizedImage(
-                            imageUri,
-                            800,
-                            600,
-                            'JPEG',
-                            80,
-                            0,
-                        );
-                        if (type === 'before') {
-                            setPhotoBefore({
-                                uri: resizedImage.uri,
-                                name: randomFileName,
-                                type: response.assets[0].type || 'image/jpeg',
-                            });
-                            setBeforePhotoTaken(true);
-                        } else {
-                            setPhotoAfter({
-                                uri: resizedImage.uri,
-                                name: randomFileName,
-                                type: response.assets[0].type || 'image/jpeg',
-                            });
-                        }
+                    const resizedImage = await ImageResizer.createResizedImage(
+                        imageUri,
+                        800,
+                        600,
+                        'JPEG',
+                        80,
+                        0,
+                    );
 
-                    } catch (resizeError) {
-                        console.log('Image Resizer Error: ', resizeError);
-                        Alert.alert('Error', 'Failed to resize image. Using original.');
+                    const newPhoto = {
+                        uri: resizedImage.uri,
+                        name: randomFileName,
+                        type: response.assets[0].type || 'image/jpeg',
+                    };
 
-                        const fileExtension = response.assets[0].type ? response.assets[0].type.split('/')[1] : 'jpg'; // Extract extension from MIME type
-                        const randomFileName = generateRandomFileName(type, fileExtension);
+                    if (type === 'before') {
+                        const updatedPhotosBefore = [...photosBefore];
+                        updatedPhotosBefore[index] = newPhoto;
+                        setPhotosBefore(updatedPhotosBefore);
 
-                        if (type === 'before') {
-                            setPhotoBefore({
-                                uri: imageUri,
-                                name: randomFileName,
-                                type: response.assets[0].type || 'image/jpeg',
-                            });
-                            setBeforePhotoTaken(true);
-                        } else {
-                            setPhotoAfter({
-                                uri: imageUri,
-                                name: randomFileName,
-                                type: response.assets[0].type || 'image/jpeg',
-                            });
-                        }
+                        const updatedBeforePhotosTaken = [...beforePhotosTaken];
+                        updatedBeforePhotosTaken[index] = true;
+                        setBeforePhotosTaken(updatedBeforePhotosTaken);
+                    } else {
+                        const updatedPhotosAfter = [...photosAfter];
+                        updatedPhotosAfter[index] = newPhoto;
+                        setPhotosAfter(updatedPhotosAfter);
+                    }
+
+                } catch (resizeError) {
+                    console.log('Image Resizer Error: ', resizeError);
+                    Alert.alert('Error', 'Failed to resize image. Using original.');
+
+                    const fileExtension = response.assets[0].type ? response.assets[0].type.split('/')[1] : 'jpg'; // Extract extension from MIME type
+                    const randomFileName = generateRandomFileName(type, fileExtension);
+
+                    const newPhoto = {
+                        uri: imageUri,
+                        name: randomFileName,
+                        type: response.assets[0].type || 'image/jpeg',
+                    };
+
+                    if (type === 'before') {
+                        const updatedPhotosBefore = [...photosBefore];
+                        updatedPhotosBefore[index] = newPhoto;
+                        setPhotosBefore(updatedPhotosBefore);
+
+                        const updatedBeforePhotosTaken = [...beforePhotosTaken];
+                        updatedBeforePhotosTaken[index] = true;
+                        setBeforePhotosTaken(updatedBeforePhotosTaken);
+                    } else {
+                        const updatedPhotosAfter = [...photosAfter];
+                        updatedPhotosAfter[index] = newPhoto;
+                        setPhotosAfter(updatedPhotosAfter);
                     }
                 }
             }
-        } catch (error) {
-            console.error('Error launching camera: ', error);
-            Alert.alert('Error', 'Failed to launch camera. Please try again.');
         }
-    };
+    } catch (error) {
+        console.error('Error launching camera: ', error);
+        Alert.alert('Error', 'Failed to launch camera. Please try again.');
+    }
+};
+
 
     const handleSave = async () => {
 
@@ -313,8 +330,8 @@ const GrillScreen = () => {
             const expiryDate = new Date(now.getTime() + expiryTime * 60000); // Add expiryTime in minutes to current time
 
             const saveData = {
-                photoBefore: photoBefore,
-                photoAfter: photoAfter,
+                photosBefore: photosBefore,
+                photosAfter: photosAfter,
                 description: description,
                 expiryDate: expiryDate.toISOString(),
             };
@@ -327,81 +344,79 @@ const GrillScreen = () => {
     };
 
     const handleSubmit = async () => {
-        setIsLoading(true);
+    setIsLoading(true);
+
+    try {
+        const token = await AsyncStorage.getItem('userToken');
+        if (!token) {
+            Alert.alert('Error', 'Token tidak ditemukan. Silakan login kembali.');
+            setIsLoading(false);
+            return;
+        }
 
         try {
-            // Ambil token dari AsyncStorage
-            const token = await AsyncStorage.getItem('userToken');
-            if (!token) {
-                Alert.alert('Error', 'Token tidak ditemukan. Silakan login kembali.');
+            const userSessionString = await AsyncStorage.getItem('userSession');
+
+            if (!userSessionString) {
+                console.warn('User session not found in AsyncStorage.'); // Log this for debugging
+                Alert.alert('Error', 'User session tidak ditemukan. Silakan login kembali.');
                 setIsLoading(false);
                 return;
             }
 
-            // Ambil data pengguna dari AsyncStorage
-            const userDataString = await AsyncStorage.getItem('userData');
-            if (!userDataString) {
-                Alert.alert('Error', 'User data tidak ditemukan. Silakan login kembali.');
-                setIsLoading(false);
-                return;
-            }
-
-            let userData;
+            let userSession;
             try {
-                userData = JSON.parse(userDataString);
-            } catch (error) {
-                console.error('Gagal mem-parse data pengguna:', error);
-                Alert.alert('Error', 'Gagal mem-parse data pengguna. Silakan login kembali.');
+                userSession = JSON.parse(userSessionString);
+            } catch (parseError) {
+                console.error('Failed to parse user session:', parseError);
+                Alert.alert('Error', 'Failed to parse user session. Please log in again.');
                 setIsLoading(false);
                 return;
             }
 
-            // Periksa apakah data pengguna ada dan Spot ID ada
-            if (!userData || !userData.user || !userData.user.accessMenu || userData.user.accessMenu.length === 0 || !userData.user.accessMenu[0].menu.spots || userData.user.accessMenu[0].menu.spots.length === 0) {
-                Alert.alert('Error', 'Data pengguna tidak lengkap. Silakan login kembali.');
+            // Extract spotId safely from userSession
+            let spotId = null;
+            if (userSession?.user?.accessMenu?.[0]?.menu?.spots?.[0]?.id) { // Access spot ID from userSession
+                spotId = String(userSession.user.accessMenu[0].menu.spots[0].id);
+            } else {
+                Alert.alert('Error', 'Spot ID tidak ditemukan dalam data pengguna.');
                 setIsLoading(false);
                 return;
-            }
-
-            const spotId = userData.user.accessMenu[0].menu.spots[0].id;
-
-            // Pastikan spotId adalah string
-            if (typeof spotId !== 'string') {
-                spotId = String(spotId); // Konversi ke string
             }
 
             if (!spotId || spotId.trim() === '') {
-                Alert.alert('Error', 'Spot ID tidak ditemukan. Silakan login kembali.');
+                Alert.alert('Error', 'Spot ID tidak valid. Silakan login kembali.');
                 setIsLoading(false);
                 return;
             }
 
-            // Buat FormData
             const formData = new FormData();
             formData.append('status', 'todo');
-            formData.append('spotId', spotId);
+            formData.append('spotId', spotId); // Use the extracted spotId
             formData.append('description', description);
             formData.append('category', 'cleanliness');
 
-            // Tambahkan gambar Before
-            if (photoBefore) {
-                formData.append('photoBefore', {
-                    uri: Platform.OS === "android" ? photoBefore.uri : photoBefore.uri.replace("file://", ""),
-                    type: photoBefore.type,
-                    name: photoBefore.name,
-                });
-            }
+             photosBefore.forEach((photo, index) => {
+                if (photo) {
+                    formData.append(`photoBefore`, {  // Appending each "before" photo
+                        uri: Platform.OS === "android" ? photo.uri : photo.uri.replace("file://", ""),
+                        type: photo.type,
+                        name: photo.name,
+                    });
+                }
+            });
 
-            // Tambahkan gambar After
-            if (photoAfter) {
-                formData.append('photoAfter', {
-                    uri: Platform.OS === "android" ? photoAfter.uri : photoAfter.uri.replace("file://", ""),
-                    type: photoAfter.type,
-                    name: photoAfter.name,
-                });
-            }
+            photosAfter.forEach((photo, index) => {
+                if (photo) {
+                    formData.append(`photoAfter`, {  // Appending each "after" photo
+                        uri: Platform.OS === "android" ? photo.uri : photo.uri.replace("file://", ""),
+                        type: photo.type,
+                        name: photo.name,
+                    });
+                }
+            });
 
-            // Kirim data ke server
+
             const response = await fetch('https://ptm-tracker-service.onrender.com/api/v1/report/create', {
                 method: 'POST',
                 headers: {
@@ -416,14 +431,14 @@ const GrillScreen = () => {
             if (response.ok) {
                 console.log('Data berhasil dikirim:', responseData);
                 Alert.alert('Sukses', 'Data berhasil dikirim!');
-                // Reset state setelah pengiriman berhasil
-                setPhotoBefore(null);
-                setPhotoAfter(null);
+
+                setPhotosBefore([null, null, null]);
+                setPhotosAfter([null, null, null]);
                 setDescription('');
-                 setBeforePhotoTaken(false); // Allow retaking photo before
+                setBeforePhotosTaken([false, false, false]); // Reset the state
             } else {
                 console.error('Gagal mengirim data:', responseData);
-                Alert.alert('Error', 'Gagal mengirim data. Silakan coba lagi.');
+                Alert.alert('Error', `Gagal mengirim data: ${responseData.message || 'Silakan coba lagi.'}`); // Display the error message from the backend
             }
         } catch (error) {
             console.error('Error:', error);
@@ -431,7 +446,12 @@ const GrillScreen = () => {
         } finally {
             setIsLoading(false);
         }
-    };
+    } catch (mainError) {
+        console.error('An unexpected error occurred:', mainError);
+        Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+        setIsLoading(false);
+    }
+};
 
     useEffect(() => {
         const loadUserToken = async () => {
@@ -452,8 +472,8 @@ const GrillScreen = () => {
                     if (parsedData.expiryDate) {
                         const expiryDate = new Date(parsedData.expiryDate);
                         if (expiryDate > new Date()) {
-                            setPhotoBefore(parsedData.photoBefore);
-                            setPhotoAfter(parsedData.photoAfter);
+                            setPhotosBefore(parsedData.photosBefore || [null, null, null]);
+                            setPhotosAfter(parsedData.photosAfter || [null, null, null]);
                             setDescription(parsedData.description);
                         } else {
                             await AsyncStorage.removeItem('grillScreenData');
@@ -496,9 +516,17 @@ const GrillScreen = () => {
     }, []);
 
     useEffect(() => {
-        setAfterButtonDisabled(!photoBefore);
-        setSubmitButtonDisabled(!photoBefore || !photoAfter || !description);
-    }, [photoBefore, photoAfter, description]);
+        // Enable "After" photos only when all "Before" photos are taken
+        const allBeforePhotosTaken = beforePhotosTaken.every(photoTaken => photoTaken);
+        setAfterButtonDisabled(!allBeforePhotosTaken);
+
+        // Check if all "Before" and "After" photos are taken and description is filled
+        const allBeforePhotosFilled = photosBefore.every(photo => photo !== null);
+        const allAfterPhotosFilled = photosAfter.every(photo => photo !== null);
+
+        setSubmitButtonDisabled(!allBeforePhotosFilled || !allAfterPhotosFilled || !description);
+    }, [photosBefore, photosAfter, description, beforePhotosTaken]);
+
 
     return (
         <SafeAreaView style={styles.safeArea}>
@@ -520,36 +548,44 @@ const GrillScreen = () => {
                     <View style={styles.photoSection}>
                         <View style={styles.photoRow}>
                             <View style={styles.photoContainer}>
-                                <Text style={styles.cardLabel}>Photo Before</Text>
-                                <TouchableOpacity
-                                    style={[styles.plusButton, styles.borderedPlusButton]}
-                                    onPress={() => takePhoto('before')}
-                                    disabled={beforePhotoTaken}
-                                >
-                                    {photoBefore ? (
-                                        <Image source={{ uri: photoBefore.uri }} style={styles.image} />
-                                    ) : (
-                                        <Text style={styles.plusButtonText}>+</Text>
-                                    )}
-                                </TouchableOpacity>
+                                 <Text style={styles.cardLabel}>Photo Before</Text>
+                                {photosBefore.map((photo, index) => (
+                                    <View key={index} style={styles.photoButtonWrapper}>
+                                        <TouchableOpacity
+                                            style={[styles.plusButton, styles.borderedPlusButton]}
+                                            onPress={() => takePhoto('before', index)}
+                                            disabled={beforePhotosTaken[index]} // Disable if already taken
+                                        >
+                                            {photo ? (
+                                                <Image source={{ uri: photo.uri }} style={styles.image} />
+                                            ) : (
+                                                <Text style={styles.plusButtonText}>+</Text>
+                                            )}
+                                        </TouchableOpacity>
+                                    </View>
+                                ))}
                             </View>
                             <View style={styles.photoContainer}>
                                 <Text style={styles.cardLabel}>Photo After</Text>
-                                <TouchableOpacity
-                                    style={[
-                                        styles.plusButton,
-                                        styles.borderedPlusButton,
-                                        afterButtonDisabled && styles.disabledPlusButton, // Apply disabled style
-                                    ]}
-                                    onPress={() => takePhoto('after')}
-                                    disabled={afterButtonDisabled}
-                                >
-                                    {photoAfter ? (
-                                        <Image source={{ uri: photoAfter.uri }} style={styles.image} />
-                                    ) : (
-                                        <Text style={styles.plusButtonText}>+</Text>
-                                    )}
-                                </TouchableOpacity>
+                                {photosAfter.map((photo, index) => (
+                                    <View key={index} style={styles.photoButtonWrapper}>
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.plusButton,
+                                                styles.borderedPlusButton,
+                                                afterButtonDisabled && styles.disabledPlusButton, // Apply disabled style
+                                            ]}
+                                            onPress={() => takePhoto('after', index)}
+                                            disabled={afterButtonDisabled}
+                                        >
+                                            {photo ? (
+                                                <Image source={{ uri: photo.uri }} style={styles.image} />
+                                            ) : (
+                                                <Text style={styles.plusButtonText}>+</Text>
+                                            )}
+                                        </TouchableOpacity>
+                                    </View>
+                                ))}
                             </View>
                         </View>
                     </View>
