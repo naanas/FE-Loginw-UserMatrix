@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
     View,
     Text,
@@ -10,11 +10,11 @@ import {
     Animated,
     RefreshControl,
     TouchableWithoutFeedback,
+    ActivityIndicator
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ReportModal from './component/ReportModal';
-import { KEBSIHAN_REPORTS, KELUHAN_REPORTS } from './mockdata/mockData';
 import ButtonNavigation from './component/BottomNavigationBar';
 import Header from '../screens/component/Header';
 import Sidebar from '../screens/component/Sidebar';
@@ -23,6 +23,10 @@ import useUserStore from '../stores/userStores';
 const menuIcon = require('../assets/menu.png');
 
 const { width, height } = Dimensions.get('window');
+
+const API_ENDPOINT = 'https://ptm-tracker-service.onrender.com/api/v1'; // Replace with your actual API endpoint
+const DEFAULT_PAGE = 1;
+const DEFAULT_LIMIT = 10;
 
 const ReportCard = ({ report, onPress }) => (
     <TouchableOpacity onPress={onPress}>
@@ -33,12 +37,12 @@ const ReportCard = ({ report, onPress }) => (
             </View>
 
             <View style={styles.reportTextContainer}>
-                <Text style={styles.reportText}>Reporter: {report.reporter || report.Reporter}</Text>
+                <Text style={styles.reportText}>Reporter: {report.createdBy || 'N/A'}</Text>
                 <View style={styles.transparentCard} />
             </View>
 
             <View style={styles.reportTextContainer}>
-                <Text style={styles.reportText}>Location: {report.location}</Text>
+                <Text style={styles.reportText}>Location: {report.spotName || 'N/A'}</Text>
                 <View style={styles.transparentCard} />
             </View>
 
@@ -56,6 +60,9 @@ const ReportCard = ({ report, onPress }) => (
                 <Text style={styles.reportText}>Created At: {report.createdAt}</Text>
                 <View style={styles.transparentCard} />
             </View>
+
+            {/* Display Photo Before Images */}
+            
         </View>
     </TouchableOpacity>
 );
@@ -73,6 +80,13 @@ const AdminDashboard = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     const logout = useUserStore(state => state.logout)
+    const [kebersihanReports, setKebersihanReports] = useState([]);
+    const [keluhanReports, setKeluhanReports] = useState([]);
+    const [loadingKebersihan, setLoadingKebersihan] = useState(false);
+    const [loadingKeluhan, setLoadingKeluhan] = useState(false);
+    const [errorKebersihan, setErrorKebersihan] = useState(null);
+    const [errorKeluhan, setErrorKeluhan] = useState(null);
+
 
     const openReportModal = (report) => {
         setSelectedReport(report);
@@ -93,12 +107,103 @@ const AdminDashboard = () => {
         }
     };
 
+ const fetchData = async (category) => {
+    const status = 'todo'; // Assuming 'todo' is the default status
+    let page = DEFAULT_PAGE;
+    let limit = DEFAULT_LIMIT;
+    let setReports, setLoading, setError;
+
+    if (category === 'cleanliness') {
+        setReports = setKebersihanReports;
+        setLoading = setLoadingKebersihan;
+        setError = setErrorKebersihan;
+    } else if (category === 'complaint') {
+        setReports = setKeluhanReports;
+        setLoading = setLoadingKeluhan;
+        setError = setErrorKeluhan;
+    } else {
+        console.error('Invalid category:', category);
+        return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+        // Construct the URL with the category parameter
+        const url = `${API_ENDPOINT}/report/list?page=${page}&limit=${limit}&category=${category}&status=${status}`;
+
+        // Retrieve the authentication token from AsyncStorage
+        const authToken = await AsyncStorage.getItem('authToken');
+        console.log('Auth token retrieved:', authToken);
+
+        // Define headers, including the authentication token
+        const headers = {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`,
+        };
+        console.log('Request Headers:', headers);
+
+        // Make the API request
+        const response = await fetch(url, { headers });
+
+        // Check if the response was successful
+        if (!response.ok) {
+            let errorBody;
+            try {
+                errorBody = await response.json();
+            } catch (jsonError) {
+                errorBody = { message: `Failed to parse error response: ${jsonError}` };
+            }
+            const errorMessage = errorBody?.message || `HTTP error! Status: ${response.status} ${response.statusText}`;
+            console.error('API Error:', errorMessage);
+            setError(new Error(errorMessage));
+            throw new Error(errorMessage);
+        }
+
+        // Parse the JSON response
+        const data = await response.json();
+        console.log('API Response Data:', data);
+
+        // **Robustly handle inconsistent API responses**
+        let reportData = [];
+
+        if (data && data.data && Array.isArray(data.data)) {
+            // Scenario 1: data.data is an array (older format?)
+            reportData = data.data;
+        } else if (data && data.data && data.data.listData && Array.isArray(data.data.listData)) {
+            // Scenario 2: data.data.listData is an array (newer format?)
+            reportData = data.data.listData;
+        } else {
+            // Scenario 3: No data found
+            console.warn('API Response: No report data found or invalid format');
+            setError(new Error('No report data found or invalid format'));
+        }
+
+        // Filter the report data based on category
+        const filteredData = reportData.filter(report => report.category === category);
+        setReports(filteredData);
+
+    } catch (error) {
+        console.error('Error fetching data:', error);
+        setError(error);
+    } finally {
+        setLoading(false);
+    }
+};
+
     const onRefresh = useCallback(() => {
         setRefreshing(true);
-        setTimeout(() => {
-            setRefreshing(false);
-        }, 2000);
+        // No need for setTimeout anymore, fetchData will handle the loading state
+        fetchData('cleanliness');
+        fetchData('complaint');
+        setRefreshing(false); //reset refreshing to false AFTER the data has been fetched
     }, []);
+
+    useEffect(() => {
+        fetchData('cleanliness');
+        fetchData('complaint');
+    }, [refreshing]);
 
     const navigateToTab = (tabName) => {
         console.log(`Navigating to: ${tabName}`);
@@ -185,13 +290,19 @@ const AdminDashboard = () => {
                             />
                         }
                     >
-                        {KEBSIHAN_REPORTS.map((report) => (
-                            <ReportCard
-                                key={report.id}
-                                report={report}
-                                onPress={() => openReportModal(report)}
-                            />
-                        ))}
+                        {loadingKebersihan && <ActivityIndicator size="large" color="white" />}
+                        {errorKebersihan && <Text style={{ color: 'red' }}>Error: {errorKebersihan.message}</Text>}
+                        {kebersihanReports.length > 0 ? (
+                            kebersihanReports.map((report) => (
+                                <ReportCard
+                                    key={report.id}
+                                    report={report}
+                                    onPress={() => openReportModal(report)}
+                                />
+                            ))
+                        ) : (
+                            <Text style={{ color: 'white' }}>No Data</Text>
+                        )}
                     </ScrollView>
                 </View>
 
@@ -207,13 +318,19 @@ const AdminDashboard = () => {
                             />
                         }
                     >
-                        {KELUHAN_REPORTS.map((report) => (
-                            <ReportCard
-                                key={report.id}
-                                report={report}
-                                onPress={() => openReportModal(report)}
+                        {loadingKeluhan && <ActivityIndicator size="large" color="white" />}
+                        {errorKeluhan && <Text style={{ color: 'red' }}>Error: {errorKeluhan.message}</Text>}
+                        {keluhanReports.length > 0 ? (
+                            keluhanReports.map((report) => (
+                                <ReportCard
+                                    key={report.id}
+                                    report={report}
+                                    onPress={() => openReportModal(report)}
                                 />
-                            ))}
+                            ))
+                        ) : (
+                            <Text style={{ color: 'white' }}>No Data</Text>
+                        )}
                     </ScrollView>
                 </View>
             </Animated.ScrollView>

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
     Modal,
     View,
@@ -10,12 +10,12 @@ import {
     Dimensions,
     Image,
     Linking,
-    Alert
+    Alert,
+    ActivityIndicator
 } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-
-// Responsive Design Helpers
 const { width, height } = Dimensions.get('window');
 const guidelineBaseWidth = 375;
 const guidelineBaseHeight = 812;
@@ -23,16 +23,97 @@ const scale = size => width / guidelineBaseWidth * size;
 const verticalScale = size => height / guidelineBaseHeight * size;
 const moderateScale = (size, factor = 0.5) => size + (scale(size) - size) * factor;
 
+const API_ENDPOINT = 'https://ptm-tracker-service.onrender.com/api/v1';
+
 const ReportModal = ({ modalVisible, selectedReport, comment, setComment, closeModal, handleSendComment }) => {
-    const [imageSources, setImageSources] = useState([
-        require('../../assets/assetsmodals/beforedrum.jpg'),
-        require('../../assets/assetsmodals/afterdrum.jpg'),
-        require('../../assets/assetsmodals/beforedebu.jpg'),
-        require('../../assets/assetsmodals/afterdebu.jpg'),
-        require('../../assets/assetsmodals/beforengemper.jpg'),
-        require('../../assets/assetsmodals/afterngemper.jpg')],
-    );
+    const [reportDetails, setReportDetails] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
     const [selectedImage, setSelectedImage] = useState(null);
+    const [signedImageUrls, setSignedImageUrls] = useState({});
+
+    const fetchSignedImageUrl = useCallback(async (imageKey) => {
+        try {
+            const authToken = await AsyncStorage.getItem('authToken');
+            const response = await fetch(`${API_ENDPOINT}/image/signed-url?key=${imageKey}`, { // Adjust endpoint if needed
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch signed URL for ${imageKey}: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log(`Signed URL for ${imageKey}:`, data.url); // Log the URL
+            return data.url;
+        } catch (error) {
+            console.error(`Error fetching signed URL for ${imageKey}:`, error);
+            return null;
+        }
+    }, []);
+
+    const fetchReportDetails = useCallback(async (reportId) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const authToken = await AsyncStorage.getItem('authToken');
+            const response = await fetch(`${API_ENDPOINT}/report/${reportId}`, {
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch report details: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('Report Details:', data);
+            setReportDetails(data.data);
+        } catch (error) {
+            console.error('Error fetching report details:', error);
+            setError(error);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (selectedReport && selectedReport.id) {
+            fetchReportDetails(selectedReport.id);
+        }
+    }, [selectedReport, fetchReportDetails]);
+
+    useEffect(() => {
+        const loadSignedUrls = async () => {
+            if (reportDetails && reportDetails.photoBefore && reportDetails.photoAfter) {
+                const beforeUrls = {};
+                for (const photo of reportDetails.photoBefore) {
+                    const url = await fetchSignedImageUrl(photo);
+                    if (url) {
+                        beforeUrls[photo] = url;
+                    }
+                }
+
+                const afterUrls = {};
+                for (const photo of reportDetails.photoAfter) {
+                    const url = await fetchSignedImageUrl(photo);
+                    if (url) {
+                        afterUrls[photo] = url;
+                    }
+                }
+
+                setSignedImageUrls({
+                    photoBefore: beforeUrls,
+                    photoAfter: afterUrls,
+                });
+            }
+        };
+
+        loadSignedUrls();
+    }, [reportDetails, fetchSignedImageUrl]);
 
     const openImage = useCallback((source) => {
         setSelectedImage(source);
@@ -44,15 +125,7 @@ const ReportModal = ({ modalVisible, selectedReport, comment, setComment, closeM
 
     const downloadImage = useCallback(async (uri) => {
         try {
-            // Check if the URI is a local file path or a network URL
-            if (uri.startsWith('http')) {
-                // For network URLs, you can directly use Linking
-                Linking.openURL(uri);
-            } else {
-                // For local URIs (e.g., from require), you might need a different approach
-                // You can copy the file to a temporary directory and then share/download it
-                Alert.alert('Download', 'Downloading local images is not directly supported. You may need additional libraries.');
-            }
+            Linking.openURL(uri);
         } catch (error) {
             console.error('Error downloading image:', error);
             Alert.alert('Error', 'Could not download image.');
@@ -63,7 +136,6 @@ const ReportModal = ({ modalVisible, selectedReport, comment, setComment, closeM
         <View style={styles.reportItemContainer}>
             <Text style={styles.reportItemLabel}>{label}</Text>
             <Text style={styles.reportItemValue}>{value}</Text>
-            
         </View>
     );
 
@@ -84,7 +156,10 @@ const ReportModal = ({ modalVisible, selectedReport, comment, setComment, closeM
                 <View style={styles.modalContainer}>
                     <Text style={styles.modalTitle}>Report Details</Text>
                     <ScrollView showsVerticalScrollIndicator={false}>
-                        {selectedReport && (
+                        {loading && <ActivityIndicator size="large" color="#e4572e" />}
+                        {error && <Text style={{ color: 'red' }}>Error: {error.message}</Text>}
+
+                        {reportDetails ? (
                             <>
                                 {/* Image Section */}
                                 <View style={styles.imageSection}>
@@ -94,31 +169,60 @@ const ReportModal = ({ modalVisible, selectedReport, comment, setComment, closeM
                                             <Text style={styles.columnLabelText}>Before</Text>
                                             <Text style={styles.columnLabelText}>After</Text>
                                         </View>
-                                        {imageSources.map((source, index) => (
-                                            <TouchableOpacity
-                                                key={index}
-                                                style={styles.imageSlot}
-                                                onPress={() => openImage(source)}
-                                            >
-                                                <Image
-                                                    source={source}
-                                                    style={styles.image}
-                                                />
-                                            </TouchableOpacity>
-                                        ))}
+                                        {/* Display Before Images */}
+                                        {reportDetails.photoBefore && reportDetails.photoBefore.map((photo, index) => {
+                                            const signedUrl = signedImageUrls.photoBefore && signedImageUrls.photoBefore[photo];
+                                            return (
+                                                <TouchableOpacity
+                                                    key={`before-${index}`}
+                                                    style={styles.imageSlot}
+                                                    onPress={() => openImage(signedUrl)}
+                                                >
+                                                    {signedUrl ? (
+                                                        <Image
+                                                            source={{ uri: signedUrl }}
+                                                            style={styles.image}
+                                                        />
+                                                    ) : (
+                                                        <ActivityIndicator color="#e4572e" />
+                                                    )}
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+
+                                        {/* Display After Images */}
+                                        {reportDetails.photoAfter && reportDetails.photoAfter.map((photo, index) => {
+                                            const signedUrl = signedImageUrls.photoAfter && signedImageUrls.photoAfter[photo];
+                                            return (
+                                                <TouchableOpacity
+                                                    key={`after-${index}`}
+                                                    style={styles.imageSlot}
+                                                    onPress={() => openImage(signedUrl)}
+                                                >
+                                                    {signedUrl ? (
+                                                        <Image
+                                                            source={{ uri: signedUrl }}
+                                                            style={styles.image}
+                                                        />
+                                                    ) : (
+                                                        <ActivityIndicator color="#e4572e" />
+                                                    )}
+                                                </TouchableOpacity>
+                                            );
+                                        })}
                                     </View>
                                 </View>
 
                                 {/* Divider Line */}
                                 <View style={styles.divider} />
 
-                                {/* Modified Report Details Section */}
-                                {renderReportItem("ID", selectedReport.id)}
-                                {renderReportItem("Reporter", selectedReport.reporter || selectedReport.Reporter)}
-                                {renderReportItem("Location", selectedReport.location)}
-                                {renderReportItem("Description", selectedReport.description)}
-                                {renderReportItem("Category", selectedReport.category)}
-                                {renderReportItem("Created At", selectedReport.createdAt)}
+                                {/* Report Details Section */}
+                                {renderReportItem("ID", reportDetails.id)}
+                                {renderReportItem("Reporter", reportDetails.createdBy || 'N/A')}
+                                {renderReportItem("Location", reportDetails.spotName || 'N/A')}
+                                {renderReportItem("Description", reportDetails.description)}
+                                {renderReportItem("Category", reportDetails.category)}
+                                {renderReportItem("Created At", reportDetails.createdAt)}
 
                                 <View style={styles.commentSection}>
                                     <Text style={styles.commentTitle}>Add Comment:</Text>
@@ -133,6 +237,8 @@ const ReportModal = ({ modalVisible, selectedReport, comment, setComment, closeM
                                     />
                                 </View>
                             </>
+                        ) : (
+                            <Text>No report selected.</Text>
                         )}
                     </ScrollView>
 
@@ -175,7 +281,7 @@ const ReportModal = ({ modalVisible, selectedReport, comment, setComment, closeM
                             <Text style={styles.closeButtonText}>X</Text>
                         </TouchableOpacity>
                         <Image
-                            source={selectedImage}
+                            source={{ uri: selectedImage }}
                             style={styles.fullScreenImage}
                             resizeMode="contain"
                         />
@@ -244,7 +350,7 @@ const styles = StyleSheet.create({
     imageGridContainer: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        justifyContent: 'space-between', // Changed to space-between
+        justifyContent: 'space-around',
         width: '100%',
     },
     columnLabels: {
@@ -262,7 +368,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     imageSlot: {
-        width: '48%', // Adjusted width for 2 columns with slight spacing
+        width: '45%',
         height: verticalScale(100),
         marginBottom: verticalScale(10),
         borderRadius: moderateScale(8),
@@ -279,31 +385,25 @@ const styles = StyleSheet.create({
         backgroundColor: '#BDBDBD',
         marginBottom: verticalScale(20),
     },
-    formRow: {
-        marginBottom: verticalScale(10),
-        width: '100%',
+    reportItemContainer: {
         flexDirection: 'row',
-        alignItems: 'flex-start',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: verticalScale(10),
         borderBottomWidth: 1,
         borderBottomColor: '#BDBDBD',
-        paddingBottom: verticalScale(5),
     },
-    formLabel: {
+    reportItemLabel: {
         fontSize: moderateScale(16),
         fontWeight: 'bold',
         color: '#333',
         width: '35%',
-        paddingRight: scale(5),
     },
-    formValueLabel: {
-        fontSize: moderateScale(16),
-        color: '#333',
-        marginBottom: verticalScale(5),
-    },
-    formValue: {
+    reportItemValue: {
         fontSize: moderateScale(16),
         color: '#555',
-        width: '65%',
+        flex: 1,
+        marginLeft: scale(20),
     },
     commentSection: {
         marginTop: verticalScale(25),
@@ -385,7 +485,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.5)',
         borderRadius: moderateScale(15),
         padding: moderateScale(10),
-        zIndex: 10, // Pastikan tombol berada di atas elemen lain
+        zIndex: 10,
     },
     downloadButton: {
         marginTop: verticalScale(20),
@@ -410,14 +510,15 @@ const styles = StyleSheet.create({
     },
     reportItemLabel: {
         fontSize: moderateScale(16),
+        fontWeight: 'bold',
         color: '#333',
-        width: '35%', // Set a fixed width for the label
+        width: '35%',
     },
     reportItemValue: {
         fontSize: moderateScale(16),
         color: '#555',
-        flex: 1, // Allow the value to take up remaining space
-        marginLeft: scale(20), // Add some left margin for spacing
+        flex: 1,
+        marginLeft: scale(20),
     },
 });
 
