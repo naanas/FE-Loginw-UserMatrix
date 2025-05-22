@@ -14,6 +14,9 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import useUserStore from '../stores/userStores';
+import { AccessMenuItem } from '../types/user';
+import { transformAccessMenu } from '../utils/transform';
 
 const { width, height } = Dimensions.get('window');
 
@@ -28,7 +31,10 @@ const LoginScreen = () => {
     const [loading, setLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
 
+    const setLoginData = useUserStore(state => state.setLoginData);
+
     const handleLogin = useCallback(async () => {
+         navigation.replace('TransitionScreen');return
         setLoading(true);
         setErrorMessage('');
 
@@ -64,6 +70,19 @@ const LoginScreen = () => {
             console.log('Login: Response data:', data);
 
             if (data.status === "success") {
+                const user = data.data.user;
+                const token = data.data.token;
+                const transformedAccessMenu = transformAccessMenu(user.accessMenu as AccessMenuItem[]);
+
+                const userData = {
+                token: token,
+                user: {
+                    ...user,
+                    accessMenu: transformedAccessMenu,
+                }
+                };
+
+                setLoginData(userData);
                 await AsyncStorage.setItem('userSession', JSON.stringify(data.data));
                 await AsyncStorage.setItem('userToken', data.data.token);
 
