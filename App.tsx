@@ -15,8 +15,11 @@ import AreaDalamShelter from './src/screens/MenuScreens/AreaDalamShelter.tsx';
 import ProdukLv1 from './src/screens/subscreens/AreaDalamShelter/Produklv1.tsx';
 import PerlindunganH_beam from './src/screens/subscreens/AreaDalamShelter/PerlindunganH_beam.tsx';
 import LantaiDalamShelter from './src/screens/subscreens/AreaDalamShelter/LantaiDalamShelter.tsx';
+import SpotScreen from './src/screens/SpotScreen/SpotScreen.tsx';
+import { RootStackParamList } from './src/types/navigation.ts';
+import CreateReportScreen from './src/screens/Report/CreateReportScreen.tsx';
 
-const Stack = createStackNavigator();
+const Stack = createStackNavigator<RootStackParamList | any>();
 
 const App = () => {
     const [initialRouteName, setInitialRouteName] = useState('Login');
@@ -68,6 +71,8 @@ const App = () => {
                         <Stack.Screen name="ProdukLv1" component={ProdukLv1} options={{ headerShown: false }} />
                         <Stack.Screen name="PerlindunganH_beam" component={PerlindunganH_beam} options={{ headerShown: false }} />
                         <Stack.Screen name="LantaiDalamShelter" component={LantaiDalamShelter} options={{ headerShown: false }} />
+                        <Stack.Screen name="SpotScreen" component={SpotScreen} options={{ headerShown: false }} />
+                        <Stack.Screen name="CreateReportScreen" component={CreateReportScreen} options={{ headerShown: false }} />
                     </Stack.Navigator>
                 </NavigationContainer>
             </SafeAreaProvider>

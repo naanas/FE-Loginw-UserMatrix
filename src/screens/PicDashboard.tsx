@@ -23,14 +23,20 @@ import ButtonNavigation from '../screens/component/BottomNavigationBar';
 import Header from '../screens/component/Header'; // Import Header component
 import Sidebar from '../screens/component/Sidebar'; // Import Sidebar component
 import { moderateScale, verticalScale } from '../screens/component/ResponsiveSize'; // Adjust path if needed
+import useUserStore from '../stores/userStores';
+import { AccessMenu, Spot } from '../types/user';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types/navigation';
 
 const { width, height } = Dimensions.get('window');
 
 // Import Local Image
 const menuIcon = require('../assets/menu.png');
 
+type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'SpotScreen'>;
 const PicDashboard = () => {
-    const navigation = useNavigation();
+
+    const navigation = useNavigation<NavigationProp>();
     const [user, setUser] = useState(null);
     const [modalVisible, setModalVisible] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
@@ -40,6 +46,14 @@ const PicDashboard = () => {
     const sidebarAnimation = useRef(new Animated.Value(0)).current;  // Initialize with useRef
     
 
+    const accessMenuBro = useUserStore(state => state).user?.accessMenu;
+
+    const imageZones = [
+        require('../assets/SisiLuarShelter.jpg'),
+        require('../assets/AreaDalamShelter.jpg'),
+        require('../assets/DindingShelter.jpg'),
+        require('../assets/Sarfas.jpg'),
+    ]
     const hardcodedGridItems = [
         {
             id: '1',
@@ -118,6 +132,25 @@ const PicDashboard = () => {
         console.log('Menu Item Pressed:', menuItem.title);
         menuItem.onPress();
     };
+
+    const handleOnMenuPress = (menu: AccessMenu) => {
+        console.log('Menu Pressed');
+        navigation.navigate('SpotScreen', { menu: menu});
+    };
+
+
+    const renderMenuItem = ({ item,index }:{ item: AccessMenu, index: number }) => {
+        return (
+            <TouchableOpacity
+                style={styles.gridItem}
+                onPress={() => handleOnMenuPress(item)}
+            >
+                <Image source={imageZones[index]} style={styles.itemImage} />
+                <Text style={styles.itemTitle}>{item.menu.name}</Text>
+                <Text style={styles.itemDescription}>{item.menu.name}</Text>
+            </TouchableOpacity>
+        );
+    }
 
     const renderGridItem = ({ item }) => {
         return (
@@ -200,9 +233,9 @@ const PicDashboard = () => {
 
             {/* Grid Items */}
             <FlatList
-                data={accessMenu}
-                renderItem={renderGridItem}
-                keyExtractor={(item) => item.id}
+                data={accessMenuBro}
+                renderItem={renderMenuItem}
+                keyExtractor={(item, index) => item.menu.id || index.toString()}
                 numColumns={2}
                 contentContainerStyle={styles.gridContainer}
                 refreshControl={

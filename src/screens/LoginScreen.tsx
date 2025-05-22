@@ -18,6 +18,8 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import useUserStore from '../stores/userStores';
+import { transformAccessMenu } from '../utils/transform';
 import { BlurView } from '@react-native-community/blur';
 
 // Import local icons
@@ -73,6 +75,8 @@ const LoginScreen = () => {
         };
     }, []);
 
+    const setLoginData = useUserStore(state => state.setLoginData);
+
     const handleLogin = useCallback(async () => {
         setLoading(true);
         setErrorMessage('');
@@ -116,19 +120,21 @@ const LoginScreen = () => {
             console.log('Login: Response data:', data);
 
             if (data.status === "success") {
-                try {
-                    await AsyncStorage.setItem('authToken', data.data.token);
-                    console.log('Auth token saved successfully:', data.data.token);
+                const user = data.data.user;
+                const token = data.data.token;
+                const transformedAccessMenu = transformAccessMenu(user.accessMenu as AccessMenuItem[]);
 
-                    await AsyncStorage.setItem('userSession', JSON.stringify(data.data));
-                    console.log('User session saved successfully:', data.data);
-                } catch (e) {
-                    console.error('AsyncStorage error:', e);
-                    setErrorMessage('Failed to save data to local storage.');
-                    Alert.alert('Storage Error', 'Failed to save data to local storage.');
-                    setLoading(false);
-                    return;
+                const userData = {
+                token: token,
+                user: {
+                    ...user,
+                    accessMenu: transformedAccessMenu,
                 }
+                };
+
+                setLoginData(userData);
+                await AsyncStorage.setItem('userSession', JSON.stringify(data.data));
+                await AsyncStorage.setItem('userToken', data.data.token);
 
                 switch (data.data.user.role) {
                     case 'admin':

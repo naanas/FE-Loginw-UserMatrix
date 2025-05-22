@@ -18,6 +18,7 @@ import ReportModal from './component/ReportModal';
 import ButtonNavigation from './component/BottomNavigationBar';
 import Header from '../screens/component/Header';
 import Sidebar from '../screens/component/Sidebar';
+import useUserStore from '../stores/userStores';
 
 const menuIcon = require('../assets/menu.png');
 
@@ -78,6 +79,7 @@ const AdminDashboard = () => {
     const [sidebarAnimation] = useState(new Animated.Value(0));
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+    const logout = useUserStore(state => state.logout)
     const [kebersihanReports, setKebersihanReports] = useState([]);
     const [keluhanReports, setKeluhanReports] = useState([]);
     const [loadingKebersihan, setLoadingKebersihan] = useState(false);
@@ -231,6 +233,7 @@ const AdminDashboard = () => {
 
    const handleLogout = async () => {
         try {
+            logout()
             await AsyncStorage.removeItem('authToken');
             console.log('Auth token removed');
             // Use reset to navigate back to Login and clear the navigation stack
