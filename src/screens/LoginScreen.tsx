@@ -64,12 +64,24 @@ const LoginScreen = () => {
             console.log('Login: Response data:', data);
 
             if (data.status === "success") {
-                await AsyncStorage.setItem('userSession', JSON.stringify(data.data));
-                await AsyncStorage.setItem('userToken', data.data.token);
+                // **Corrected AsyncStorage Usage and Error Handling**
+                try {
+                  await AsyncStorage.setItem('authToken', data.data.token); // Changed to 'authToken'
+                  console.log('Auth token saved successfully:', data.data.token);
+
+                  await AsyncStorage.setItem('userSession', JSON.stringify(data.data));
+                  console.log('User session saved successfully:', data.data);
+
+                } catch (e) {
+                  console.error('AsyncStorage error:', e);
+                  setErrorMessage('Failed to save data to local storage.');
+                  setLoading(false);
+                  return; // Exit the function to prevent further actions
+                }
 
                 switch (data.data.user.role) {
                     case 'admin':
-                        navigation.replace('TransitionScreen');
+                        navigation.replace('AdminDashboard'); // Changed to AdminDashboard
                         break;
                     case 'pic':
                         navigation.replace('TransitionScreen');
