@@ -20,6 +20,10 @@ import LinearGradient from 'react-native-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BlurView } from '@react-native-community/blur';
 
+// Import local icons
+import EyeIcon from '../assets/eye24.png'; // Path to the eye icon
+import EyeSlashIcon from '../assets/eyeclose24.png'; // Path to the eye-slash icon
+
 const { width, height } = Dimensions.get('window');
 
 const API_URL = 'https://ptm-tracker-service.onrender.com/api/v1/auth';
@@ -33,6 +37,7 @@ const LoginScreen = () => {
     const [errorMessage, setErrorMessage] = useState('');
     const [isKeyboardVisible, setKeyboardVisible] = useState(false);
     const slideAnim = useRef(new Animated.Value(0)).current;
+    const [showPassword, setShowPassword] = useState(false);
 
     const passwordInputRef = useRef(null);
 
@@ -157,6 +162,10 @@ const LoginScreen = () => {
         navigation.replace(''); // Ganti dengan halaman yang sesuai
     }, [navigation]);
 
+    const toggleShowPassword = () => {
+        setShowPassword(!showPassword);
+    };
+
     const accessibilityHidden = typeof loading === 'boolean' ? loading : false;
 
     const formTranslateY = slideAnim.interpolate({
@@ -212,18 +221,29 @@ const LoginScreen = () => {
                         </View>
 
                         <View style={styles.inputContainer}>
-                            <TextInput
-                                placeholder="Password"
-                                placeholderTextColor="#888"
-                                secureTextEntry
-                                style={styles.input}
-                                value={password}
-                                onChangeText={setPassword}
-                                editable={!loading}
-                                returnKeyType="done"
-                                onSubmitEditing={handleLogin}
-                                ref={passwordInputRef}
-                            />
+                            <View style={styles.passwordInputContainer}>
+                                <TextInput
+                                    placeholder="Password"
+                                    placeholderTextColor="#888"
+                                    secureTextEntry={!showPassword}
+                                    style={styles.input}
+                                    value={password}
+                                    onChangeText={setPassword}
+                                    editable={!loading}
+                                    returnKeyType="done"
+                                    onSubmitEditing={handleLogin}
+                                    ref={passwordInputRef}
+                                />
+                                <TouchableOpacity
+                                    style={styles.eyeIcon}
+                                    onPress={toggleShowPassword}
+                                >
+                                    <Image
+                                        source={showPassword ? EyeIcon : EyeSlashIcon}
+                                        style={styles.iconImage}
+                                    />
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     </View>
 
@@ -253,7 +273,7 @@ const LoginScreen = () => {
 
                     {/* Login as Guest Button */}
                     <TouchableOpacity
-                    
+
                         style={styles.button}
                         onPress={handleGuestLogin}
                         disabled={loading}
@@ -271,7 +291,7 @@ const LoginScreen = () => {
                             )}
                         </LinearGradient>
 
-                        
+
                     </TouchableOpacity>
                 </Animated.View>
 
@@ -409,6 +429,19 @@ const styles = StyleSheet.create({
         bottom: 0,
         right: 0,
         zIndex: 1, // Make sure the blur view is behind the card
+    },
+    passwordInputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    eyeIcon: {
+        position: 'absolute',
+        right: width * 0.04,
+    },
+    iconImage: {
+        width: 20,
+        height: 20,
+        resizeMode: 'contain',
     },
 });
 
