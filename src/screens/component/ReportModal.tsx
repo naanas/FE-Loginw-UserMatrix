@@ -15,6 +15,8 @@ import {
 } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import useUserStoreser from '../../stores/userStores';
+
 
 const { width, height } = Dimensions.get('window');
 const guidelineBaseWidth = 375;
@@ -31,13 +33,14 @@ const ReportModal = ({ modalVisible, selectedReport, comment, setComment, closeM
     const [error, setError] = useState(null);
     const [selectedImage, setSelectedImage] = useState(null);
     const [signedImageUrls, setSignedImageUrls] = useState({});
+    const toket = useUserStoreser((state) => state.token);
 
     const fetchSignedImageUrl = useCallback(async (imageKey) => {
         try {
-            const authToken = await AsyncStorage.getItem('authToken');
+          
             const response = await fetch(`${API_ENDPOINT}/image/signed-url?key=${imageKey}`, { // Adjust endpoint if needed
                 headers: {
-                    'Authorization': `Bearer ${authToken}`,
+                    'Authorization': `Bearer ${toket}`,
                 },
             });
 
@@ -58,7 +61,7 @@ const ReportModal = ({ modalVisible, selectedReport, comment, setComment, closeM
         setLoading(true);
         setError(null);
         try {
-            const authToken = await AsyncStorage.getItem('authToken');
+            const authToken = await AsyncStorage.getItem('userToken');
             const response = await fetch(`${API_ENDPOINT}/report/${reportId}`, {
                 headers: {
                     'Authorization': `Bearer ${authToken}`,

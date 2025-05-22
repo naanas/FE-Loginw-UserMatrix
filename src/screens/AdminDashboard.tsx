@@ -24,6 +24,7 @@ const menuIcon = require('../assets/menu.png');
 
 const { width, height } = Dimensions.get('window');
 
+
 const API_ENDPOINT = 'https://ptm-tracker-service.onrender.com/api/v1'; // Replace with your actual API endpoint
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 10;
@@ -68,6 +69,7 @@ const ReportCard = ({ report, onPress }) => (
 );
 
 const AdminDashboard = () => {
+    const toket = useUserStore((state) => state.token);
     const navigation = useNavigation();
     const scrollViewRef = useRef();
     const [scrollX] = useState(new Animated.Value(0));
@@ -134,13 +136,12 @@ const AdminDashboard = () => {
         const url = `${API_ENDPOINT}/report/list?page=${page}&limit=${limit}&category=${category}&status=${status}`;
 
         // Retrieve the authentication token from AsyncStorage
-        const authToken = await AsyncStorage.getItem('authToken');
-        console.log('Auth token retrieved:', authToken);
+      
 
         // Define headers, including the authentication token
         const headers = {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authToken}`,
+            'Authorization': `Bearer ${toket}`,
         };
         console.log('Request Headers:', headers);
 
@@ -407,6 +408,7 @@ const styles = StyleSheet.create({
     },
       reportTextContainer: {
         marginBottom: verticalScale(3),
+        
     },
     transparentCard: {
         backgroundColor: 'transparent',
